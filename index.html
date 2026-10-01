@@ -45,8 +45,14 @@
       </div>
     </div>
     <div class="flex items-center space-x-3">
-      <span id="user-status" class="text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 font-medium border border-slate-200">● 唯讀模式 (未登入)</span>
-      
+      <!-- 雲端連線狀態與更新時間顯示 -->
+      <div class="flex items-center space-x-2 text-xs">
+        <span id="firebase-status" class="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 font-medium border border-amber-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-notch fa-spin"></i> <span>連線初始化中...</span>
+        </span>
+        <span id="last-update-time" class="text-slate-400 hidden md:inline">上次更新：尚無</span>
+      </div>
+
       <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
         <i class="fa-solid fa-file-excel"></i> 匯出 Excel
       </button>
@@ -71,9 +77,7 @@
 
   <!-- 工作表 (分區) 頁籤導覽列 -->
   <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-2xs overflow-x-auto">
-    <div id="sheets-tab-container" class="flex items-center space-x-2">
-      <!-- 動態生成工作表頁籤 -->
-    </div>
+    <div id="sheets-tab-container" class="flex items-center space-x-2"></div>
     <div id="sheet-actions-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
         <i class="fa-solid fa-plus"></i> 新增工作表 (分區)
@@ -101,7 +105,7 @@
     </div>
   </main>
 
-  <!-- 登入 Modal -->
+  <!-- 登入 Modal (電子郵件與密碼) -->
   <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-96 shadow-2xl">
       <div class="flex justify-between items-center mb-6">
@@ -112,11 +116,11 @@
       </div>
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">電子郵件</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">電子郵件 (Email)</label>
           <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="admin@example.com">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">密碼</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">密碼 (Password)</label>
           <input type="password" id="login-password" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="••••••••">
         </div>
         <div id="login-error" class="text-rose-600 text-xs font-medium hidden"></div>
@@ -174,12 +178,15 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK (Compat 版本) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
+    // ==========================================
+    // 1. Firebase 專案設定 (請填入您的設定)
+    // ==========================================
     const firebaseConfig = {
       apiKey: "您的API_KEY",
       authDomain: "您的專案.firebaseapp.com",
@@ -194,9 +201,9 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // 多工作表資料結構預設值
     let appState = {
       activeSheetId: "sheet_auto",
+      updatedAt: null,
       sheets: [
         {
           id: "sheet_auto",
@@ -220,25 +227,22 @@
 
     let isEditor = false;
 
-    // 權限與登入監聽
+    // ==========================================
+    // 2. 認證與 Firebase 登入狀態監聽
+    // ==========================================
     auth.onAuthStateChanged(user => {
-      const statusEl = document.getElementById('user-status');
       const authBtn = document.getElementById('auth-toggle-btn');
       const adminToolbar = document.getElementById('admin-toolbar');
       const sheetActionsToolbar = document.getElementById('sheet-actions-toolbar');
 
       if (user) {
         isEditor = true;
-        statusEl.className = "text-xs px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200";
-        statusEl.textContent = `● 管理員已登入: ${user.email}`;
         authBtn.textContent = "登出系統";
         authBtn.className = "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.remove('hidden');
         sheetActionsToolbar.classList.remove('hidden');
       } else {
         isEditor = false;
-        statusEl.className = "text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 font-medium border border-slate-200";
-        statusEl.textContent = "● 唯讀模式 (未登入)";
         authBtn.textContent = "管理員登入";
         authBtn.className = "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.add('hidden');
@@ -255,27 +259,67 @@
       }
     }
     function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
+    
     function handleLogin() {
       const email = document.getElementById('login-email').value;
       const pass = document.getElementById('login-password').value;
-      auth.signInWithEmailAndPassword(email, pass).then(() => { closeLoginModal(); alert("登入成功！"); }).catch(err => {
-        document.getElementById('login-error').textContent = "登入失敗：" + err.message;
-        document.getElementById('login-error').classList.remove('hidden');
-      });
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => { 
+          closeLoginModal(); 
+          alert("登入成功！"); 
+        })
+        .catch(err => {
+          const errEl = document.getElementById('login-error');
+          errEl.textContent = "登入失敗：" + err.message;
+          errEl.classList.remove('hidden');
+        });
     }
 
-    // Firebase 即時同步
-    const stateRef = db.ref('factory_layout_multisheet_state');
+    // ==========================================
+    // 3. 雲端即時連線與狀態、更新時間監聽
+    // ==========================================
+    const stateRef = db.ref('factory_layout_commercial_v2');
+
     function syncToFirebase() {
       if (!isEditor) return;
+      appState.updatedAt = new Date().toISOString(); // 記錄更新時間
       stateRef.set(appState).catch(err => console.error("同步失敗:", err));
     }
-    stateRef.on('value', snapshot => {
-      const val = snapshot.val();
-      if (val) { appState = val; renderApp(); }
+
+    // 監聽雲端資料與連線狀態
+    db.ref('.info/connected').on('value', snap => {
+      const statusEl = document.getElementById('firebase-status');
+      if (snap.val() === true) {
+        statusEl.className = "px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-medium border border-emerald-200 flex items-center gap-1.5";
+        statusEl.innerHTML = `<i class="fa-solid fa-circle text-[9px] text-emerald-500"></i> <span>雲端已連線</span>`;
+      } else {
+        statusEl.className = "px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 font-medium border border-rose-200 flex items-center gap-1.5";
+        statusEl.innerHTML = `<i class="fa-solid fa-circle text-[9px] text-rose-500"></i> <span>雲端斷線中</span>`;
+      }
     });
 
-    // 取得當前作用中的工作表
+    stateRef.on('value', snapshot => {
+      const val = snapshot.val();
+      if (val) {
+        appState = val;
+        renderApp();
+        updateTimeDisplay();
+      }
+    });
+
+    function updateTimeDisplay() {
+      const timeEl = document.getElementById('last-update-time');
+      if (appState.updatedAt) {
+        const dateObj = new Date(appState.updatedAt);
+        timeEl.textContent = `上次更新：${dateObj.toLocaleString('zh-TW', { hour12: false })}`;
+      } else {
+        timeEl.textContent = `上次更新：尚未同步`;
+      }
+    }
+
+    // ==========================================
+    // 4. 分區工作表與機台畫布渲染
+    // ==========================================
     function getCurrentSheet() {
       let sheet = appState.sheets.find(s => s.id === appState.activeSheetId);
       if (!sheet && appState.sheets.length > 0) {
@@ -285,18 +329,16 @@
       return sheet;
     }
 
-    // 渲染主畫面與分區頁籤
     function renderApp() {
       renderSheetsTabs();
+      updateTimeDisplay();
 
       const currentSheet = getCurrentSheet();
       if (!currentSheet) return;
 
-      // 底圖
       const bgLayer = document.getElementById('factory-bg-layer');
       bgLayer.style.backgroundImage = currentSheet.bgImage ? `url('${currentSheet.bgImage}')` : 'none';
 
-      // 機台卡片
       const canvasArea = document.getElementById('machine-canvas-area');
       canvasArea.innerHTML = "";
 
@@ -329,7 +371,6 @@
       });
     }
 
-    // 渲染工作表分區頁籤
     function renderSheetsTabs() {
       const container = document.getElementById('sheets-tab-container');
       container.innerHTML = "";
@@ -354,7 +395,6 @@
       });
     }
 
-    // 工作表操作：新增、重新命名、刪除
     function addNewSheet() {
       if (!isEditor) return;
       const sheetName = prompt("請輸入新工作表 (分區) 名稱：", `分區_${appState.sheets.length + 1}`);
@@ -387,10 +427,7 @@
 
     function deleteSheet(sheetId) {
       if (!isEditor) return;
-      if (appState.sheets.length <= 1) {
-        alert("至少需要保留一個工作表！");
-        return;
-      }
+      if (appState.sheets.length <= 1) { alert("至少需要保留一個工作表！"); return; }
       if (confirm("確定要刪除此工作表及其中所有機台配置嗎？")) {
         appState.sheets = appState.sheets.filter(s => s.id !== sheetId);
         appState.activeSheetId = appState.sheets[0].id;
@@ -429,18 +466,13 @@
       };
     }
 
-    // Excel 匯入/匯出 (支援多工作表打包)
+    // Excel 匯入/匯出
     function exportToExcel() {
       const workbook = XLSX.utils.book_new();
       appState.sheets.forEach(sheet => {
         const rows = sheet.machines.map(m => ({
-          "機台編號": m.name,
-          "專屬客戶": m.customer,
-          "圖片網址": m.imgUrl,
-          "備註說明": m.note,
-          "狀態顏色": m.statusColor,
-          "X座標": m.x,
-          "Y座標": m.y
+          "機台編號": m.name, "專屬客戶": m.customer, "圖片網址": m.imgUrl,
+          "備註說明": m.note, "狀態顏色": m.statusColor, "X座標": m.x, "Y座標": m.y
         }));
         const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ "機台編號": "", "專屬客戶": "", "圖片網址": "", "備註說明": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }]);
         XLSX.utils.book_append_sheet(workbook, ws, sheet.name);
@@ -452,13 +484,11 @@
       if (!isEditor) return alert("請先登入管理員帳號！");
       const file = event.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
-          
           appState.sheets = workbook.SheetNames.map((sheetName, sIdx) => {
             const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
             return {
@@ -477,15 +507,11 @@
               }))
             };
           });
-
           if (appState.sheets.length > 0) appState.activeSheetId = appState.sheets[0].id;
           syncToFirebase();
           renderApp();
-          alert("Excel 多工作表資料成功匯入！");
-        } catch (err) {
-          console.error(err);
-          alert("解析 Excel 失敗。");
-        }
+          alert("Excel 資料成功匯入！");
+        } catch (err) { alert("解析 Excel 失敗。"); }
         event.target.value = "";
       };
       reader.readAsArrayBuffer(file);
@@ -497,8 +523,7 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        const currentSheet = getCurrentSheet();
-        currentSheet.bgImage = e.target.result;
+        getCurrentSheet().bgImage = e.target.result;
         syncToFirebase();
         renderApp();
         alert("當前分區底圖上傳成功！");
@@ -518,15 +543,9 @@
 
     function addNewMachine() {
       if (!isEditor) return;
-      const currentSheet = getCurrentSheet();
-      currentSheet.machines.push({
-        id: `m_${Date.now()}`,
-        name: "新機台",
-        customer: "指定客戶",
-        imgUrl: "",
-        note: "備註說明",
-        statusColor: "bg-emerald-600",
-        x: 50, y: 50
+      getCurrentSheet().machines.push({
+        id: `m_${Date.now()}`, name: "新機台", customer: "指定客戶",
+        imgUrl: "", note: "備註說明", statusColor: "bg-emerald-600", x: 50, y: 50
       });
       syncToFirebase();
       renderApp();
@@ -534,10 +553,8 @@
 
     function openEditModal(machineId) {
       if (!isEditor) return;
-      const currentSheet = getCurrentSheet();
-      const m = currentSheet.machines.find(item => item.id === machineId);
+      const m = getCurrentSheet().machines.find(item => item.id === machineId);
       if (!m) return;
-
       document.getElementById('edit-machine-id').value = m.id;
       document.getElementById('edit-name').value = m.name;
       document.getElementById('edit-customer').value = m.customer || "";
@@ -550,15 +567,14 @@
 
     function saveMachineChanges() {
       if (!isEditor) return;
-      const currentSheet = getCurrentSheet();
       const id = document.getElementById('edit-machine-id').value;
-      const m = currentSheet.machines.find(item => item.id === id);
+      const m = getCurrentSheet().machines.find(item => item.id === id);
       if (m) {
         m.name = document.getElementById('edit-name').value;
         m.customer = document.getElementById('edit-customer').value;
         m.imgUrl = document.getElementById('edit-img-url').value;
         m.note = document.getElementById('edit-note').value;
-        m.statusColor = document.getElementById('edit-status-color').value;
+        m.statusColor = document.getElementById('edit-status-color5') ? document.getElementById('edit-status-color5').value : document.getElementById('edit-status-color').value;
         syncToFirebase();
         renderApp();
         closeEditModal();
