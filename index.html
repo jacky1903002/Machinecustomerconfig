@@ -89,7 +89,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯資訊，登入後新增或拖曳機台將自動同步儲存至雲端。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯資訊，登入後新增或拖曳機台將即時寫入並安全同步至雲端。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -227,6 +227,7 @@
     };
 
     let isEditor = false;
+    let isLocallyUpdating = false; // 防止本機寫入時被遠端監聽覆蓋
 
     // ==========================================
     // 2. 認證監聽
@@ -277,14 +278,20 @@
     }
 
     // ==========================================
-    // 3. 雲端同步
+    // 3. 雲端同步 (加入鎖定機制防覆蓋)
     // ==========================================
-    const stateRef = db.ref('factory_layout_commercial_v6');
+    const stateRef = db.ref('factory_layout_commercial_v7');
 
     function syncToFirebase() {
       if (!isEditor) return;
+      isLocallyUpdating = true;
       appState.updatedAt = new Date().toISOString();
-      stateRef.set(appState).catch(err => console.error("同步失敗:", err));
+      stateRef.set(appState).then(() => {
+        setTimeout(() => { isLocallyUpdating = false; }, 300);
+      }).catch(err => {
+        isLocallyUpdating = false;
+        console.error("同步失敗:", err);
+      });
     }
 
     db.ref('.info/connected').on('value', snap => {
@@ -299,6 +306,7 @@
     });
 
     stateRef.on('value', snapshot => {
+      if (isLocallyUpdating) return; // 略過本機剛發出的寫入回呼
       const val = snapshot.val();
       if (val) {
         appState = val;
@@ -555,11 +563,18 @@
 
     function addNewMachine() {
       if (!isEditor) return;
-      getCurrentSheet().machines.push({
-        id: `m_${Date.now()}`, name: "新機台", customer: "指定客戶",
-        imgUrl: "", note: "備註說明", statusColor: "bg-emerald-600", x: 30, y: 30
+      const currentSheet = getCurrentSheet();
+      currentSheet.machines.push({
+        id: `m_${Date.now()}`, 
+        name: "新機台", 
+        customer: "指定客戶",
+        imgUrl: "", 
+        note: "備註說明", 
+        statusColor: "bg-emerald-600", 
+        x: 30, 
+        y: 30
       });
-      syncToFirebase(); // 立即同步至雲端，避免重新整理後消失
+      syncToFirebase();
       renderApp();
     }
 
