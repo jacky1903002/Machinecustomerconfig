@@ -89,7 +89,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯資訊，登入後新增或拖曳機台將即時寫入並安全同步至雲端。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯資訊，登入後新增或拖曳將直接強制寫入雲端資料庫。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -227,7 +227,7 @@
     };
 
     let isEditor = false;
-    let isLocallyUpdating = false; // 防止本機寫入時被遠端監聽覆蓋
+    let initialLoaded = false;
 
     // ==========================================
     // 2. 認證監聽
@@ -278,19 +278,23 @@
     }
 
     // ==========================================
-    // 3. 雲端同步 (加入鎖定機制防覆蓋)
+    // 3. 雲端同步與資料初始化 (改用 v8 路徑並加入完整除錯)
     // ==========================================
-    const stateRef = db.ref('factory_layout_commercial_v7');
+    const stateRef = db.ref('factory_layout_commercial_v8');
 
     function syncToFirebase() {
-      if (!isEditor) return;
-      isLocallyUpdating = true;
+      if (!isEditor) {
+        console.warn("未登入管理員，無法寫入雲端");
+        return;
+      }
       appState.updatedAt = new Date().toISOString();
+      console.log("正在同步資料至 Firebase...", appState);
+      
       stateRef.set(appState).then(() => {
-        setTimeout(() => { isLocallyUpdating = false; }, 300);
+        console.log("Firebase 寫入成功！");
       }).catch(err => {
-        isLocallyUpdating = false;
-        console.error("同步失敗:", err);
+        console.error("Firebase 寫入失敗錯誤：", err);
+        alert("儲存至雲端失敗：" + err.message);
       });
     }
 
@@ -305,14 +309,22 @@
       }
     });
 
+    // 監聽雲端資料變更
     stateRef.on('value', snapshot => {
-      if (isLocallyUpdating) return; // 略過本機剛發出的寫入回呼
       const val = snapshot.val();
       if (val) {
+        console.log("從雲端載入最新資料:", val);
         appState = val;
-        renderApp();
-        updateTimeDisplay();
+        // 確保 activeSheetId 正常
+        if (!appState.sheets.some(s => s.id === appState.activeSheetId) && appState.sheets.length > 0) {
+          appState.activeSheetId = appState.sheets[0].id;
+        }
+      } else {
+        console.log("雲端尚無資料，寫入預設資料...");
+        syncToFirebase();
       }
+      renderApp();
+      updateTimeDisplay();
     });
 
     function updateTimeDisplay() {
@@ -562,7 +574,10 @@
     }
 
     function addNewMachine() {
-      if (!isEditor) return;
+      if (!isEditor) {
+        alert("請先登入管理員帳號才能新增機台！");
+        return;
+      }
       const currentSheet = getCurrentSheet();
       currentSheet.machines.push({
         id: `m_${Date.now()}`, 
