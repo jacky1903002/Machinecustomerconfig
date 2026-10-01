@@ -92,7 +92,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>登入後可透過機台卡片右上角齒輪或雙擊編輯資訊，拖曳時自動磁吸對齊相鄰機台。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>登入後直接點擊機台卡片即可編輯資訊，拖曳時自動磁吸對齊相鄰機台。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -220,7 +220,7 @@
 
     let appState = {
       activeSheetId: "sheet_auto",
-      logoUrl: "", // 新增 Logo 圖片連結儲存
+      logoUrl: "",
       updatedAt: null,
       sheets: [
         {
@@ -344,7 +344,6 @@
       }
     }
 
-    // Logo 圖片網址設定
     function changeLogoUrl() {
       if (!isEditor) return;
       const currentUrl = appState.logoUrl || "";
@@ -385,7 +384,6 @@
       const currentSheet = getCurrentSheet();
       if (!currentSheet) return;
 
-      // 更新畫布正上方的廠區名稱標題
       document.getElementById('current-zone-title').textContent = currentSheet.name;
 
       const bgLayer = document.getElementById('factory-bg-layer');
@@ -396,7 +394,8 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg ${isEditor ? 'pointer-events-auto cursor-grab' : 'pointer-events-none'}`;
+        // 核心修正：將 card 設定為 pointer-events-auto，並支援點擊直接開啟編輯
+        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg ${isEditor ? 'cursor-grab' : 'pointer-events-none'}`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
@@ -405,30 +404,23 @@
           imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[10px]\'>網址失效</div>'"></div>`;
         }
 
-        // 登入後在卡片右上角加入明確的編輯齒輪按鈕，保障點擊穩定度
-        let editBtnHtml = '';
-        if (isEditor) {
-          editBtnHtml = `<button onclick="event.stopPropagation(); openEditModal('${m.id}')" class="text-slate-400 hover:text-blue-600 p-0.5 transition" title="編輯機台"><i class="fa-solid fa-gear text-[11px]"></i></button>`;
-        }
-
         card.innerHTML = `
-          <div class="flex justify-between items-center pointer-events-none">
-            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[65px]">${m.name}</span>
-            <div class="flex items-center space-x-1">
-              <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[45px]">${m.customer || '客戶'}</span>
-              <div class="pointer-events-auto">${editBtnHtml}</div>
-            </div>
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[80px]">${m.name}</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[45px]">${m.customer || '客戶'}</span>
           </div>
           ${imgHtml}
-          <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight pointer-events-none">
+          <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight">
             <span class="text-slate-400 font-semibold mb-0.5 block">備註：${m.note || '無'}</span>
           </div>
         `;
 
-        // 雙擊開啟編輯
-        card.ondblclick = (e) => {
+        // 【核心修改】登入狀態下，直接點擊機台卡片正中間任何地方即可開啟編輯視窗！
+        card.onclick = (e) => {
           e.stopPropagation();
-          if (isEditor) openEditModal(m.id);
+          if (isEditor) {
+            openEditModal(m.id);
+          }
         };
 
         if (isEditor) initDragAndDrop(card, m);
@@ -502,9 +494,10 @@
       }
     }
 
-    // 拖曳機台，並支援自動對齊相鄰機台
+    // 智慧磁吸對齊拖曳
     function initDragAndDrop(card, machineData) {
       let startX, startY, initialX, initialY;
+      let hasMoved = false; // 用來區分是「點擊編輯」還是「拖曳移動」
       
       let guideLineX = document.getElementById('snap-guideline-x');
       let guideLineY = document.getElementById('snap-guideline-y');
@@ -523,15 +516,29 @@
 
       card.onpointerdown = (e) => {
         if (!isEditor) return;
-
-        startX = e.clientX; startY = e.clientY;
-        initialX = machineData.x || 30; initialY = machineData.y || 30;
-        card.classList.add('dragging', 'is-dragging');
+        startX = e.clientX; 
+        startY = e.clientY;
+        initialX = machineData.x || 30; 
+        initialY = machineData.y || 30;
+        hasMoved = false;
         card.setPointerCapture(e.pointerId);
 
         card.onpointermove = (ev) => {
-          let newX = initialX + (ev.clientX - startX);
-          let newY = initialY + (ev.clientY - startY);
+          let dx = ev.clientX - startX;
+          let dy = ev.clientY - startY;
+          
+          // 如果移動距離超過 4 像素，判定為拖曳動作
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+            if (!hasMoved) {
+              hasMoved = true;
+              card.classList.add('dragging', 'is-dragging');
+            }
+          }
+
+          if (!hasMoved) return;
+
+          let newX = initialX + dx;
+          let newY = initialY + dy;
           
           const container = document.getElementById('factory-canvas-container');
           const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
@@ -630,9 +637,15 @@
 
           card.releasePointerCapture(ev.pointerId);
           card.onpointermove = null; card.onpointerup = null;
-          card.classList.remove('dragging');
-          setTimeout(() => card.classList.remove('is-dragging'), 50);
-          syncToFirebase();
+
+          if (hasMoved) {
+            card.classList.remove('dragging');
+            setTimeout(() => card.classList.remove('is-dragging'), 50);
+            syncToFirebase();
+          } else {
+            // 如果沒有明顯移動，則視為點擊，直接開啟編輯視窗
+            openEditModal(machineData.id);
+          }
         };
       };
     }
