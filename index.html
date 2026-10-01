@@ -185,16 +185,16 @@
 
   <script>
     // ==========================================
-    // 1. Firebase 專案設定 (請填入您的設定)
+    // 1. Firebase 專案設定 (已更新為最新金鑰)
     // ==========================================
     const firebaseConfig = {
-      apiKey: "您的API_KEY",
-      authDomain: "您的專案.firebaseapp.com",
-      databaseURL: "https://您的專案-default-rtdb.firebaseio.com",
-      projectId: "您的專案ID",
-      storageBucket: "您的專案.appspot.com",
-      messagingSenderId: "您的SenderID",
-      appId: "您的AppID"
+      apiKey: "AIzaSyC9V1qeIXdQXP0-O4aWFehgPnbAMDVcQbU",
+      authDomain: "machinecustomerconfig-dbbf9.firebaseapp.com",
+      projectId: "machinecustomerconfig-dbbf9",
+      storageBucket: "machinecustomerconfig-dbbf9.firebasestorage.app",
+      messagingSenderId: "541137205848",
+      appId: "1:541137205848:web:9b9701cf12147cb5eda82d",
+      measurementId: "G-VJQ6R2DW7M"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -278,15 +278,14 @@
     // ==========================================
     // 3. 雲端即時連線與狀態、更新時間監聽
     // ==========================================
-    const stateRef = db.ref('factory_layout_commercial_v2');
+    const stateRef = db.ref('factory_layout_commercial_v3');
 
     function syncToFirebase() {
       if (!isEditor) return;
-      appState.updatedAt = new Date().toISOString(); // 記錄更新時間
+      appState.updatedAt = new Date().toISOString();
       stateRef.set(appState).catch(err => console.error("同步失敗:", err));
     }
 
-    // 監聽雲端資料與連線狀態
     db.ref('.info/connected').on('value', snap => {
       const statusEl = document.getElementById('firebase-status');
       if (snap.val() === true) {
@@ -574,7 +573,7 @@
         m.customer = document.getElementById('edit-customer').value;
         m.imgUrl = document.getElementById('edit-img-url').value;
         m.note = document.getElementById('edit-note').value;
-        m.statusColor = document.getElementById('edit-status-color').value; // 修正此處，直接抓取正確的 ID
+        m.statusColor = document.getElementById('edit-status-color').value;
         syncToFirebase();
         renderApp();
         closeEditModal();
