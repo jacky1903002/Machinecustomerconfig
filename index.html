@@ -20,11 +20,13 @@
       touch-action: none;
       transition: box-shadow 0.2s ease;
       width: 140px;
+      cursor: pointer;
     }
     .machine-card.dragging {
-      opacity: 0.85;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      opacity: 0.9;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
       z-index: 1000 !important;
+      cursor: grabbing !important;
     }
   </style>
 </head>
@@ -86,7 +88,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>登入後直接點擊機台卡片即可編輯資訊，長按或拖曳卡片邊緣可移動並自動磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯資訊；按住並拖曳卡片即可移動位置並自動磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -111,7 +113,7 @@
 
     <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[730px]">
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
-      <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full pointer-events-none"></div>
+      <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
     </div>
   </main>
 
@@ -292,7 +294,7 @@
     // ==========================================
     // 3. 雲端同步與初始化
     // ==========================================
-    const stateRef = db.ref('factory_layout_commercial_v8');
+    const stateRef = db.ref('factory_layout_commercial_v9');
 
     function syncToFirebase() {
       if (!isEditor) return;
@@ -387,7 +389,7 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg ${isEditor ? 'cursor-pointer' : ''}`;
+        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
@@ -396,40 +398,20 @@
           imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[10px]\'>網址失效</div>'"></div>`;
         }
 
-        // 建立右上角明確的「拖曳把手區」，用來移動機台
-        let dragHandleHtml = '';
-        if (isEditor) {
-          dragHandleHtml = `<div class="drag-handle text-slate-400 hover:text-slate-700 px-1 cursor-grab active:cursor-grabbing" title="按住此處拖曳機台"><i class="fa-solid fa-grip-dots-vertical text-xs"></i></div>`;
-        }
-
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[70px]">${m.name}</span>
-            <div class="flex items-center space-x-1">
-              <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[40px]">${m.customer || '客戶'}</span>
-              ${dragHandleHtml}
-            </div>
+            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[85px]">${m.name}</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[45px]">${m.customer || '客戶'}</span>
           </div>
           ${imgHtml}
           <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight">
-            <span class="text-slate-400 font-semibold mb-0.5 block">備註：${m.note || '無'}</span>
+            <span class="text-slate-400 font-semibold mb-0.5 block truncate">備註：${m.note || '無'}</span>
           </div>
         `;
 
-        // 點擊機台正中間任何地方 -> 直接開啟編輯視窗
-        card.onclick = (e) => {
-          e.stopPropagation();
-          if (isEditor) {
-            openEditModal(m.id);
-          }
-        };
-
-        // 如果是管理員，只有透過右上角的拖曳把手（或卡片邊緣）才能拖曳，避免與點擊編輯衝突
+        // 智慧互動處理：結合「點擊編輯」與「平滑拖曳」
         if (isEditor) {
-          const handle = card.querySelector('.drag-handle');
-          if (handle) {
-            initDragAndDrop(handle, card, m);
-          }
+          initCardInteraction(card, m);
         }
 
         canvasArea.appendChild(card);
@@ -502,141 +484,141 @@
       }
     }
 
-    // 專屬拖曳把手與磁吸對齊功能
-    function initDragAndDrop(handle, card, machineData) {
-      let startX, startY, initialX, initialY;
-      
+    // 結合距離感測的點擊與拖曳互動系統
+    function initCardInteraction(card, machineData) {
+      let startX = 0, startY = 0;
+      let initialX = 0, initialY = 0;
+      let hasMoved = false;
+
       let guideLineX = document.getElementById('snap-guideline-x');
       let guideLineY = document.getElementById('snap-guideline-y');
       if (!guideLineX) {
         guideLineX = document.createElement('div');
         guideLineX.id = 'snap-guideline-x';
-        guideLineX.style.cssText = 'position:absolute; top:0; bottom:0; width:1px; background:red; z-index:999; display:none; pointer-events:none;';
+        guideLineX.style.cssText = 'position:absolute; top:0; bottom:0; width:1px; background:#3b82f6; z-index:999; display:none; pointer-events:none;';
         document.getElementById('factory-canvas-container').appendChild(guideLineX);
       }
       if (!guideLineY) {
         guideLineY = document.createElement('div');
         guideLineY.id = 'snap-guideline-y';
-        guideLineY.style.cssText = 'position:absolute; left:0; right:0; height:1px; background:red; z-index:999; display:none; pointer-events:none;';
+        guideLineY.style.cssText = 'position:absolute; left:0; right:0; height:1px; background:#3b82f6; z-index:999; display:none; pointer-events:none;';
         document.getElementById('factory-canvas-container').appendChild(guideLineY);
       }
 
-      handle.onpointerdown = (e) => {
-        e.stopPropagation(); // 防止觸發卡片的點擊事件
+      card.onpointerdown = (e) => {
         if (!isEditor) return;
-
-        startX = e.clientX; 
+        startX = e.clientX;
         startY = e.clientY;
-        initialX = machineData.x || 30; 
+        initialX = machineData.x || 30;
         initialY = machineData.y || 30;
-        
-        card.classList.add('dragging');
-        handle.setPointerCapture(e.pointerId);
+        hasMoved = false;
 
-        handle.onpointermove = (ev) => {
-          let newX = initialX + (ev.clientX - startX);
-          let newY = initialY + (ev.clientY - startY);
-          
-          const container = document.getElementById('factory-canvas-container');
-          const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
-          const maxY = Math.max(0, container.clientHeight - card.offsetHeight);
+        card.setPointerCapture(e.pointerId);
 
-          newX = Math.max(10, Math.min(newX, maxX));
-          newY = Math.max(10, Math.min(newY, maxY));
+        card.onpointermove = (ev) => {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
 
-          // 自動對齊磁吸邏輯
-          const SNAP_THRESHOLD = 10;
-          let snapX = null;
-          let snapY = null;
+          // 超過 3 像素即視為拖曳
+          if (!hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+            hasMoved = true;
+            card.classList.add('dragging');
+          }
 
-          const allCards = container.querySelectorAll('.machine-card');
-          allCards.forEach(otherCard => {
-            if (otherCard === card) return;
-            
-            const oLeft = otherCard.offsetLeft;
-            const oTop = otherCard.offsetTop;
-            const oWidth = otherCard.offsetWidth;
-            const oHeight = otherCard.offsetHeight;
-            const oRight = oLeft + oWidth;
-            const oBottom = oTop + oHeight;
-            const oCenterX = oLeft + oWidth / 2;
-            const oCenterY = oTop + oHeight / 2;
+          if (hasMoved) {
+            let newX = initialX + dx;
+            let newY = initialY + dy;
 
-            const cWidth = card.offsetWidth;
-            const cHeight = card.offsetHeight;
-            const cRight = newX + cWidth;
-            const cBottom = newY + cHeight;
-            const cCenterX = newX + cWidth / 2;
-            const cCenterY = newY + cHeight / 2;
+            const container = document.getElementById('factory-canvas-container');
+            const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
+            const maxY = Math.max(0, container.clientHeight - card.offsetHeight);
 
-            const xTargets = [
-              { val: oLeft, targetNew: oLeft },
-              { val: oRight, targetNew: oRight - cWidth },
-              { val: oCenterX, targetNew: oCenterX - cWidth / 2 },
-              { val: oRight, targetNew: oRight },
-              { val: oLeft, targetNew: oLeft - cWidth }
-            ];
+            newX = Math.max(10, Math.min(newX, maxX));
+            newY = Math.max(10, Math.min(newY, maxY));
 
-            xTargets.forEach(t => {
-              [newX, cRight, cCenterX].forEach(currPos => {
-                if (Math.abs(currPos - t.val) < SNAP_THRESHOLD) {
-                  if (Math.abs(newX - t.targetNew) < SNAP_THRESHOLD * 2) {
-                    newX = t.targetNew;
-                    snapX = t.val;
-                  }
+            // 磁吸對齊邏輯
+            const SNAP_THRESHOLD = 10;
+            let snapX = null;
+            let snapY = null;
+
+            container.querySelectorAll('.machine-card').forEach(otherCard => {
+              if (otherCard === card) return;
+              const oLeft = otherCard.offsetLeft;
+              const oTop = otherCard.offsetTop;
+              const oWidth = otherCard.offsetWidth;
+              const oHeight = otherCard.offsetHeight;
+              const oRight = oLeft + oWidth;
+              const oBottom = oTop + oHeight;
+              const oCenterX = oLeft + oWidth / 2;
+              const oCenterY = oTop + oHeight / 2;
+
+              const cWidth = card.offsetWidth;
+              const cHeight = card.offsetHeight;
+              const cRight = newX + cWidth;
+              const cBottom = newY + cHeight;
+              const cCenterX = newX + cWidth / 2;
+              const cCenterY = newY + cHeight / 2;
+
+              [
+                { val: oLeft, targetNew: oLeft },
+                { val: oRight, targetNew: oRight - cWidth },
+                { val: oCenterX, targetNew: oCenterX - cWidth / 2 }
+              ].forEach(t => {
+                if (Math.abs(newX - t.targetNew) < SNAP_THRESHOLD) {
+                  newX = t.targetNew;
+                  snapX = t.val;
+                }
+              });
+
+              [
+                { val: oTop, targetNew: oTop },
+                { val: oBottom, targetNew: oBottom - cHeight },
+                { val: oCenterY, targetNew: oCenterY - cHeight / 2 }
+              ].forEach(t => {
+                if (Math.abs(newY - t.targetNew) < SNAP_THRESHOLD) {
+                  newY = t.targetNew;
+                  snapY = t.val;
                 }
               });
             });
 
-            const yTargets = [
-              { val: oTop, targetNew: oTop },
-              { val: oBottom, targetNew: oBottom - cHeight },
-              { val: oCenterY, targetNew: oCenterY - cHeight / 2 },
-              { val: oBottom, targetNew: oBottom },
-              { val: oTop, targetNew: oTop - cHeight }
-            ];
+            if (snapX !== null) {
+              guideLineX.style.left = `${snapX}px`;
+              guideLineX.style.display = 'block';
+            } else {
+              guideLineX.style.display = 'none';
+            }
 
-            yTargets.forEach(t => {
-              [newY, cBottom, cCenterY].forEach(currPos => {
-                if (Math.abs(currPos - t.val) < SNAP_THRESHOLD) {
-                  if (Math.abs(newY - t.targetNew) < SNAP_THRESHOLD * 2) {
-                    newY = t.targetNew;
-                    snapY = t.val;
-                  }
-                }
-              });
-            });
-          });
+            if (snapY !== null) {
+              guideLineY.style.top = `${snapY}px`;
+              guideLineY.style.display = 'block';
+            } else {
+              guideLineY.style.display = 'none';
+            }
 
-          if (snapX !== null) {
-            guideLineX.style.left = `${snapX}px`;
-            guideLineX.style.display = 'block';
-          } else {
-            guideLineX.style.display = 'none';
+            machineData.x = newX;
+            machineData.y = newY;
+            card.style.left = `${newX}px`;
+            card.style.top = `${newY}px`;
           }
-
-          if (snapY !== null) {
-            guideLineY.style.top = `${snapY}px`;
-            guideLineY.style.display = 'block';
-          } else {
-            guideLineY.style.display = 'none';
-          }
-
-          machineData.x = newX; 
-          machineData.y = newY;
-          card.style.left = `${newX}px`; 
-          card.style.top = `${newY}px`;
         };
 
-        handle.onpointerup = (ev) => {
+        card.onpointerup = (ev) => {
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
 
-          handle.releasePointerCapture(ev.pointerId);
-          handle.onpointermove = null; 
-          handle.onpointerup = null;
+          card.releasePointerCapture(ev.pointerId);
+          card.onpointermove = null;
+          card.onpointerup = null;
           card.classList.remove('dragging');
-          syncToFirebase();
+
+          if (!hasMoved) {
+            // 沒有移動過，代表是「點擊」動作 -> 開啟編輯視窗
+            openEditModal(machineData.id);
+          } else {
+            // 有移動過，代表是「拖曳」結束 -> 同步到雲端
+            syncToFirebase();
+          }
         };
       };
     }
