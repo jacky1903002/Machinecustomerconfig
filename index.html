@@ -88,7 +88,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製；拖曳時會即時顯示座標並支援智慧磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製；拖曳時即時座標將顯示於機台右側並支援智慧磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
@@ -115,9 +115,9 @@
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
-      <!-- 即時座標浮動提示 -->
-      <div id="coordinate-tooltip" style="display: none;" class="absolute bottom-4 right-4 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl shadow-2xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none">
-        <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1.5"></i>X: <span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y: <span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
+      <!-- 即時座標浮動提示（跟隨機台右側） -->
+      <div id="coordinate-tooltip" style="display: none;" class="absolute bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none whitespace-nowrap">
+        <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1"></i>X:<span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y:<span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
       </div>
     </div>
   </main>
@@ -467,7 +467,7 @@
       }
     }
 
-    // 支援智慧磁吸對齊與拖曳互動
+    // 支援智慧磁吸對齊、拖曳互動與右側座標跟隨
     function initCardInteraction(card, machineData) {
       let startX = 0, startY = 0;
       let initialX = 0, initialY = 0;
@@ -559,6 +559,10 @@
 
             tipX.textContent = Math.round(newX);
             tipY.textContent = Math.round(newY);
+
+            // 讓座標提示框跟隨在機台右側 (卡片 X + 卡片寬度 + 8px 間距)
+            tooltip.style.left = `${newX + card.offsetWidth + 8}px`;
+            tooltip.style.top = `${newY}px`;
           }
         };
 
