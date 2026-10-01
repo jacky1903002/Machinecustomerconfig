@@ -586,17 +586,45 @@
       };
     }
 
-    function exportToExcel() {
-      const workbook = XLSX.utils.book_new();
-      appState.sheets.forEach(sheet => {
-        const rows = sheet.machines.map(m => ({
-          "機台編號": m.name, "圖片網址": m.imgUrl,
-          "狀態顏色": m.statusColor, "X座標": m.x, "Y座標": m.y
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ "機台編號": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }]);
-        XLSX.utils.book_append_sheet(workbook, ws, sheet.name);
-      });
-      XLSX.writeFile(workbook, `多工作表廠區配置_${new Date().toISOString().slice(0,10)}.xlsx`);
+function exportToExcel() {
+      try {
+        // 檢查 SheetJS 函式庫是否已成功載入
+        if (typeof XLSX === 'undefined') {
+          alert("Excel 匯出工具尚未載入完成，請檢查網路連線或 CDN。");
+          return;
+        }
+
+        const workbook = XLSX.utils.book_new();
+        
+        if (!appState.sheets || appState.sheets.length === 0) {
+          alert("目前沒有任何工作表可供匯出！");
+          return;
+        }
+
+        appState.sheets.forEach(sheet => {
+          let rows = [];
+          if (sheet.machines && sheet.machines.length > 0) {
+            rows = sheet.machines.map(m => ({
+              "機台編號": m.name || "",
+              "圖片網址": m.imgUrl || "",
+              "狀態顏色": m.statusColor || "bg-emerald-600",
+              "X座標": m.x || 0,
+              "Y座標": m.y || 0
+            }));
+          } else {
+            // 若該分區沒有機台，放一個空行避免 SheetJS 報錯
+            rows = [{ "機台編號": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
+          }
+
+          const ws = XLSX.utils.json_to_sheet(rows);
+          XLSX.utils.book_append_sheet(workbook, ws, sheet.name || "未命名工作表");
+        });
+
+        XLSX.writeFile(workbook, `多工作表廠區配置_${new Date().toISOString().slice(0,10)}.xlsx`);
+      } catch (err) {
+        console.error("匯出 Excel 發生錯誤：", err);
+        alert("匯出 Excel 失敗，請透過開發者工具 (F12) 查看詳細錯誤訊息。");
+      }
     }
 
     function importFromExcel(event) {
