@@ -23,7 +23,7 @@
       cursor: pointer;
     }
     .machine-card.dragging {
-      opacity: 0.9;
+      opacity: 0.95;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
       z-index: 1000 !important;
       cursor: grabbing !important;
@@ -115,9 +115,9 @@
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
-      <!-- 即時座標浮動提示 -->
-      <div id="coordinate-tooltip" class="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-xs text-white text-xs px-3 py-1.5 rounded-lg shadow-lg z-40 hidden pointer-events-none font-mono">
-        X: <span id="tooltip-x">0</span>, Y: <span id="tooltip-y">0</span>
+      <!-- 即時座標浮動提示（修復：確保 z-index 最高且預設不阻擋滑鼠） -->
+      <div id="coordinate-tooltip" class="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-xs text-white text-xs px-3.5 py-2 rounded-xl shadow-xl z-50 hidden pointer-events-none font-mono tracking-wide border border-slate-700">
+        <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1.5"></i>X: <span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y: <span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
       </div>
     </div>
   </main>
@@ -529,10 +529,10 @@
           const dx = ev.clientX - startX;
           const dy = ev.clientY - startY;
 
-          if (!hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+          if (!hasMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
             hasMoved = true;
             card.classList.add('dragging');
-            tooltip.classList.remove('hidden');
+            tooltip.classList.remove('hidden'); // 顯示座標提示卡
           }
 
           if (hasMoved) {
@@ -610,7 +610,7 @@
             card.style.left = `${newX}px`;
             card.style.top = `${newY}px`;
 
-            // 即時更新座標提示
+            // 即時更新浮動座標提示卡數值
             tipX.textContent = Math.round(newX);
             tipY.textContent = Math.round(newY);
           }
@@ -619,9 +619,12 @@
         card.onpointerup = (ev) => {
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
-          tooltip.classList.add('hidden');
+          tooltip.classList.add('hidden'); // 隱藏座標提示卡
 
-          card.releasePointerCapture(ev.pointerId);
+          try {
+            card.releasePointerCapture(ev.pointerId);
+          } catch(err) {}
+
           card.onpointermove = null;
           card.onpointerup = null;
           card.classList.remove('dragging');
