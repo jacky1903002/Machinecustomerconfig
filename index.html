@@ -88,7 +88,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製資訊；按住並拖曳卡片即可移動位置並自動磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製；拖曳時會即時顯示座標並支援智慧磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -114,6 +114,11 @@
     <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[730px]">
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
+
+      <!-- 即時座標浮動提示 -->
+      <div id="coordinate-tooltip" class="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-xs text-white text-xs px-3 py-1.5 rounded-lg shadow-lg z-40 hidden pointer-events-none font-mono">
+        X: <span id="tooltip-x">0</span>, Y: <span id="tooltip-y">0</span>
+      </div>
     </div>
   </main>
 
@@ -491,6 +496,10 @@
       let initialX = 0, initialY = 0;
       let hasMoved = false;
 
+      const tooltip = document.getElementById('coordinate-tooltip');
+      const tipX = document.getElementById('tooltip-x');
+      const tipY = document.getElementById('tooltip-y');
+
       let guideLineX = document.getElementById('snap-guideline-x');
       let guideLineY = document.getElementById('snap-guideline-y');
       if (!guideLineX) {
@@ -523,6 +532,7 @@
           if (!hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
             hasMoved = true;
             card.classList.add('dragging');
+            tooltip.classList.remove('hidden');
           }
 
           if (hasMoved) {
@@ -595,16 +605,21 @@
               guideLineY.style.display = 'none';
             }
 
-            machineData.x = newX;
-            machineData.y = newY;
+            machineData.x = Math.round(newX);
+            machineData.y = Math.round(newY);
             card.style.left = `${newX}px`;
             card.style.top = `${newY}px`;
+
+            // 即時更新座標提示
+            tipX.textContent = Math.round(newX);
+            tipY.textContent = Math.round(newY);
           }
         };
 
         card.onpointerup = (ev) => {
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
+          tooltip.classList.add('hidden');
 
           card.releasePointerCapture(ev.pointerId);
           card.onpointermove = null;
