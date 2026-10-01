@@ -76,7 +76,7 @@
   </header>
 
   <!-- 工作表 (分區) 頁籤導覽列 -->
-  <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-2xs overflow-x-auto">
+  <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-sm overflow-x-auto">
     <div id="sheets-tab-container" class="flex items-center space-x-2"></div>
     <div id="sheet-actions-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
@@ -91,7 +91,7 @@
       <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製；拖曳時會即時顯示座標並支援智慧磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
-      <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
+      <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
         <i class="fa-solid fa-plus"></i> 在當前工作表新增機台
       </button>
     </div>
@@ -102,7 +102,7 @@
     <div class="flex justify-between items-center mb-3 px-2">
       <div class="flex items-center space-x-2">
         <h2 id="current-zone-title" class="text-xl font-bold text-slate-800">廠區配置預覽</h2>
-        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-2xs">
+        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-sm">
           <i class="fa-solid fa-pen-to-square text-blue-600"></i> 編輯廠區名稱
         </button>
       </div>
@@ -115,15 +115,15 @@
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
-      <!-- 即時座標浮動提示（修復：確保 z-index 最高且預設不阻擋滑鼠） -->
-      <div id="coordinate-tooltip" class="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-xs text-white text-xs px-3.5 py-2 rounded-xl shadow-xl z-50 hidden pointer-events-none font-mono tracking-wide border border-slate-700">
+      <!-- 即時座標浮動提示（改用 style.display 控制，絕對強制顯示） -->
+      <div id="coordinate-tooltip" style="display: none;" class="absolute bottom-4 right-4 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl shadow-2xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none">
         <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1.5"></i>X: <span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y: <span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
       </div>
     </div>
   </main>
 
   <!-- 登入 Modal -->
-  <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+  <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-96 shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -150,7 +150,7 @@
   </div>
 
   <!-- 機台編輯 Modal -->
-  <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+  <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[480px] shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -409,7 +409,7 @@
         card.innerHTML = `
           <div class="flex justify-between items-center">
             <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[85px]">${m.name}</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-sm ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
           </div>
           ${imgHtml}
           <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight">
@@ -532,7 +532,7 @@
           if (!hasMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
             hasMoved = true;
             card.classList.add('dragging');
-            tooltip.classList.remove('hidden'); // 顯示座標提示卡
+            tooltip.style.display = 'block'; // 直接強制顯示座標提示卡
           }
 
           if (hasMoved) {
@@ -610,7 +610,7 @@
             card.style.left = `${newX}px`;
             card.style.top = `${newY}px`;
 
-            // 即時更新浮動座標提示卡數值
+            // 即時更新數值
             tipX.textContent = Math.round(newX);
             tipY.textContent = Math.round(newY);
           }
@@ -619,7 +619,7 @@
         card.onpointerup = (ev) => {
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
-          tooltip.classList.add('hidden'); // 隱藏座標提示卡
+          tooltip.style.display = 'none'; // 隱藏座標提示卡
 
           try {
             card.releasePointerCapture(ev.pointerId);
@@ -741,6 +741,7 @@
     }
     function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
 
+    function放機台變更() { saveMachineChanges(); }
     function saveMachineChanges() {
       if (!isEditor) return;
       const id = document.getElementById('edit-machine-id').value;
