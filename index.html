@@ -16,14 +16,10 @@
   <style>
     .machine-card {
       position: absolute;
-      cursor: grab;
       user-select: none;
       touch-action: none;
       transition: box-shadow 0.2s ease;
       width: 140px;
-    }
-    .machine-card:active {
-      cursor: grabbing;
     }
     .machine-card.dragging {
       opacity: 0.85;
@@ -37,7 +33,6 @@
   <!-- 頂部商業導覽列 -->
   <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
     <div class="flex items-center space-x-3">
-      <!-- 網頁最左側 Logo 圖片 / 圖示區塊 (登入後點擊可更改圖片連結) -->
       <div id="brand-logo-container" onclick="changeLogoUrl()" title="點擊可設定 Logo 圖片連結" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20 overflow-hidden cursor-pointer hover:opacity-90 transition">
         <div id="brand-logo-content" class="w-full h-full flex items-center justify-center">
           <i class="fa-solid fa-industry"></i>
@@ -49,7 +44,6 @@
       </div>
     </div>
     <div class="flex items-center space-x-3">
-      <!-- 雲端連線狀態與更新時間顯示 -->
       <div class="flex items-center space-x-2 text-xs">
         <span id="firebase-status" class="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 font-medium border border-amber-200 flex items-center gap-1.5">
           <i class="fa-solid fa-circle-notch fa-spin"></i> <span>連線初始化中...</span>
@@ -92,7 +86,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>登入後直接點擊機台卡片即可編輯資訊，拖曳時自動磁吸對齊相鄰機台。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>登入後直接點擊機台卡片即可編輯資訊，長按或拖曳卡片邊緣可移動並自動磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -103,7 +97,6 @@
 
   <!-- 主畫布區域 -->
   <main class="flex-1 p-6 max-w-[1700px] mx-auto w-full">
-    <!-- 畫布正上方的廠區名稱與編輯標題列 -->
     <div class="flex justify-between items-center mb-3 px-2">
       <div class="flex items-center space-x-2">
         <h2 id="current-zone-title" class="text-xl font-bold text-slate-800">廠區配置預覽</h2>
@@ -297,7 +290,7 @@
     }
 
     // ==========================================
-    // 3. 雲端同步與資料初始化
+    // 3. 雲端同步與初始化
     // ==========================================
     const stateRef = db.ref('factory_layout_commercial_v8');
 
@@ -394,8 +387,7 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        // 核心修正：將 card 設定為 pointer-events-auto，並支援點擊直接開啟編輯
-        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg ${isEditor ? 'cursor-grab' : 'pointer-events-none'}`;
+        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg ${isEditor ? 'cursor-pointer' : ''}`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
@@ -404,10 +396,19 @@
           imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[10px]\'>網址失效</div>'"></div>`;
         }
 
+        // 建立右上角明確的「拖曳把手區」，用來移動機台
+        let dragHandleHtml = '';
+        if (isEditor) {
+          dragHandleHtml = `<div class="drag-handle text-slate-400 hover:text-slate-700 px-1 cursor-grab active:cursor-grabbing" title="按住此處拖曳機台"><i class="fa-solid fa-grip-dots-vertical text-xs"></i></div>`;
+        }
+
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[80px]">${m.name}</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[45px]">${m.customer || '客戶'}</span>
+            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[70px]">${m.name}</span>
+            <div class="flex items-center space-x-1">
+              <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[40px]">${m.customer || '客戶'}</span>
+              ${dragHandleHtml}
+            </div>
           </div>
           ${imgHtml}
           <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight">
@@ -415,7 +416,7 @@
           </div>
         `;
 
-        // 【核心修改】登入狀態下，直接點擊機台卡片正中間任何地方即可開啟編輯視窗！
+        // 點擊機台正中間任何地方 -> 直接開啟編輯視窗
         card.onclick = (e) => {
           e.stopPropagation();
           if (isEditor) {
@@ -423,7 +424,14 @@
           }
         };
 
-        if (isEditor) initDragAndDrop(card, m);
+        // 如果是管理員，只有透過右上角的拖曳把手（或卡片邊緣）才能拖曳，避免與點擊編輯衝突
+        if (isEditor) {
+          const handle = card.querySelector('.drag-handle');
+          if (handle) {
+            initDragAndDrop(handle, card, m);
+          }
+        }
+
         canvasArea.appendChild(card);
       });
     }
@@ -494,10 +502,9 @@
       }
     }
 
-    // 智慧磁吸對齊拖曳
-    function initDragAndDrop(card, machineData) {
+    // 專屬拖曳把手與磁吸對齊功能
+    function initDragAndDrop(handle, card, machineData) {
       let startX, startY, initialX, initialY;
-      let hasMoved = false; // 用來區分是「點擊編輯」還是「拖曳移動」
       
       let guideLineX = document.getElementById('snap-guideline-x');
       let guideLineY = document.getElementById('snap-guideline-y');
@@ -514,31 +521,21 @@
         document.getElementById('factory-canvas-container').appendChild(guideLineY);
       }
 
-      card.onpointerdown = (e) => {
+      handle.onpointerdown = (e) => {
+        e.stopPropagation(); // 防止觸發卡片的點擊事件
         if (!isEditor) return;
+
         startX = e.clientX; 
         startY = e.clientY;
         initialX = machineData.x || 30; 
         initialY = machineData.y || 30;
-        hasMoved = false;
-        card.setPointerCapture(e.pointerId);
+        
+        card.classList.add('dragging');
+        handle.setPointerCapture(e.pointerId);
 
-        card.onpointermove = (ev) => {
-          let dx = ev.clientX - startX;
-          let dy = ev.clientY - startY;
-          
-          // 如果移動距離超過 4 像素，判定為拖曳動作
-          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-            if (!hasMoved) {
-              hasMoved = true;
-              card.classList.add('dragging', 'is-dragging');
-            }
-          }
-
-          if (!hasMoved) return;
-
-          let newX = initialX + dx;
-          let newY = initialY + dy;
+        handle.onpointermove = (ev) => {
+          let newX = initialX + (ev.clientX - startX);
+          let newY = initialY + (ev.clientY - startY);
           
           const container = document.getElementById('factory-canvas-container');
           const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
@@ -631,21 +628,15 @@
           card.style.top = `${newY}px`;
         };
 
-        card.onpointerup = (ev) => {
+        handle.onpointerup = (ev) => {
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
 
-          card.releasePointerCapture(ev.pointerId);
-          card.onpointermove = null; card.onpointerup = null;
-
-          if (hasMoved) {
-            card.classList.remove('dragging');
-            setTimeout(() => card.classList.remove('is-dragging'), 50);
-            syncToFirebase();
-          } else {
-            // 如果沒有明顯移動，則視為點擊，直接開啟編輯視窗
-            openEditModal(machineData.id);
-          }
+          handle.releasePointerCapture(ev.pointerId);
+          handle.onpointermove = null; 
+          handle.onpointerup = null;
+          card.classList.remove('dragging');
+          syncToFirebase();
         };
       };
     }
