@@ -20,7 +20,7 @@
       user-select: none;
       touch-action: none;
       transition: box-shadow 0.2s ease;
-      width: 140px; /* 縮小為約 1/4 大小 */
+      width: 140px; /* 1/4 大小 */
     }
     .machine-card:active {
       cursor: grabbing;
@@ -89,7 +89,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯圖片與資訊，登入後可將 1/4 尺寸機台在畫布格線內自由拖曳定位。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯資訊，登入後新增或拖曳機台將自動同步儲存至雲端。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -279,7 +279,7 @@
     // ==========================================
     // 3. 雲端同步
     // ==========================================
-    const stateRef = db.ref('factory_layout_commercial_v5');
+    const stateRef = db.ref('factory_layout_commercial_v6');
 
     function syncToFirebase() {
       if (!isEditor) return;
@@ -307,7 +307,7 @@
       }
     });
 
-    function updateTimeDesign() {
+    function updateTimeDisplay() {
       const timeEl = document.getElementById('last-update-time');
       if (appState.updatedAt) {
         const dateObj = new Date(appState.updatedAt);
@@ -316,11 +316,9 @@
         timeEl.textContent = `上次更新：尚未同步`;
       }
     }
-    // 相容舊函式名稱
-    function updateTimeDisplay() { updateTimeDesign(); }
 
     // ==========================================
-    // 4. 渲染核心 (1/4 大小卡片與隱藏格線內限縮)
+    // 4. 渲染核心
     // ==========================================
     function getCurrentSheet() {
       let sheet = appState.sheets.find(s => s.id === appState.activeSheetId);
@@ -347,8 +345,8 @@
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
         card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg ${isEditor ? 'pointer-events-auto cursor-grab' : 'pointer-events-none'}`;
-        card.style.left = `${m.x || 20}px`;
-        card.style.top = `${m.y || 20}px`;
+        card.style.left = `${m.x || 30}px`;
+        card.style.top = `${m.y || 30}px`;
 
         let imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md flex items-center justify-center text-slate-400 border border-dashed border-slate-200"><i class="fa-solid fa-microchip text-base"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
@@ -449,7 +447,7 @@
       card.onpointerdown = (e) => {
         if (!isEditor) return;
         startX = e.clientX; startY = e.clientY;
-        initialX = machineData.x || 20; initialY = machineData.y || 20;
+        initialX = machineData.x || 30; initialY = machineData.y || 30;
         card.classList.add('dragging', 'is-dragging');
         card.setPointerCapture(e.pointerId);
 
@@ -458,7 +456,6 @@
           let newY = initialY + (ev.clientY - startY);
           
           const container = document.getElementById('factory-canvas-container');
-          // 縮小後的 1/4 卡片寬高分別約為 140px 與 140px，精準計算隱藏格線邊界
           const maxX = Math.max(0, container.clientWidth - 150);
           const maxY = Math.max(0, container.clientHeight - 150);
 
@@ -560,9 +557,9 @@
       if (!isEditor) return;
       getCurrentSheet().machines.push({
         id: `m_${Date.now()}`, name: "新機台", customer: "指定客戶",
-        imgUrl: "", note: "備註", statusColor: "bg-emerald-600", x: 30, y: 30
+        imgUrl: "", note: "備註說明", statusColor: "bg-emerald-600", x: 30, y: 30
       });
-      syncToFirebase();
+      syncToFirebase(); // 立即同步至雲端，避免重新整理後消失
       renderApp();
     }
 
