@@ -3,189 +3,246 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>廠區機台與客戶配置管理系統</title>
+  <title>企業級多工作表廠區配置管理系統</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- html2canvas 用於匯出配置圖截圖 -->
+  <!-- html2canvas -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+  <!-- SheetJS (Excel) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- 頂部導覽列 -->
-  <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+  <style>
+    .machine-card {
+      position: absolute;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      transition: box-shadow 0.2s ease;
+    }
+    .machine-card:active {
+      cursor: grabbing;
+    }
+    .machine-card.dragging {
+      opacity: 0.85;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      z-index: 1000 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- 頂部商業導覽列 -->
+  <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
     <div class="flex items-center space-x-3">
-      <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xl">
+      <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20">
         <i class="fa-solid fa-industry"></i>
       </div>
-      <h1 class="text-xl font-bold tracking-wider">廠區機台配置與客戶對應系統</h1>
+      <div>
+        <h1 class="text-lg font-bold text-slate-900 tracking-tight">智慧廠區多工作表配置系統</h1>
+        <p class="text-xs text-slate-400">Multi-Sheet Factory Zone Layout Management</p>
+      </div>
     </div>
     <div class="flex items-center space-x-3">
-      <span id="user-status" class="text-xs px-3 py-1 rounded-full bg-slate-700 text-slate-400">● 唯讀模式 (未登入)</span>
-      <button onclick="exportLayoutPNG()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
-        <i class="fa-solid fa-download"></i> 匯出配置圖
+      <span id="user-status" class="text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 font-medium border border-slate-200">● 唯讀模式 (未登入)</span>
+      
+      <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+        <i class="fa-solid fa-file-excel"></i> 匯出 Excel
       </button>
-      <label class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer flex items-center gap-2">
-        <i class="fa-solid fa-upload"></i> 上傳廠區底圖
+      <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
+        <i class="fa-solid fa-file-import"></i> 匯入 Excel
+        <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+      </label>
+      <button onclick="exportLayoutPNG()" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+        <i class="fa-solid fa-camera"></i> 截圖匯出
+      </button>
+
+      <label class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
+        <i class="fa-solid fa-image"></i> 更換當前區底圖
         <input type="file" id="bg-image-input" accept="image/*" class="hidden" onchange="handleBgImageUpload(event)">
       </label>
-      <button id="auth-toggle-btn" onclick="toggleAuthModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+
+      <button id="auth-toggle-btn" onclick="toggleAuthModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">
         管理員登入
       </button>
     </div>
   </header>
 
-  <!-- 工具列（僅登入後可見操作） -->
-  <div class="bg-slate-800/50 border-b border-slate-700/50 px-6 py-2 flex items-center justify-between text-sm">
-    <div class="flex items-center space-x-4">
-      <span class="text-slate-400">提示：點擊機台卡片可編輯專屬客戶、圖片網址與備註。</span>
+  <!-- 工作表 (分區) 頁籤導覽列 -->
+  <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-2xs overflow-x-auto">
+    <div id="sheets-tab-container" class="flex items-center space-x-2">
+      <!-- 動態生成工作表頁籤 -->
     </div>
-    <div id="admin-toolbar" class="hidden flex items-center space-x-2">
-      <button onclick="addNewMachine()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition">
-        <i class="fa-solid fa-plus"></i> 新增機台
+    <div id="sheet-actions-toolbar" class="hidden flex items-center space-x-2">
+      <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-plus"></i> 新增工作表 (分區)
       </button>
     </div>
   </div>
 
-  <!-- 主佈景與機台配置區域 -->
-  <main class="flex-1 p-6 max-w-[1600px] mx-auto w-full">
-    <div id="factory-canvas-container" class="relative rounded-xl border border-slate-700 bg-slate-950 overflow-hidden min-h-[700px] shadow-2xl flex items-center justify-center">
-      <!-- 廠區背景底圖 -->
-      <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-40 pointer-events-none"></div>
-      
-      <!-- 機台卡片佈局網格 -->
-      <div id="machine-grid" class="relative z-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 p-8 w-full h-full items-start">
-        <!-- 動態生成機台 -->
-      </div>
+  <!-- 次要操作工具列 -->
+  <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
+    <div class="text-slate-500 font-medium">
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊頁籤名稱可重新命名分區，登入後可自由拖曳機台與新增機台。</span>
+    </div>
+    <div id="admin-toolbar" class="hidden flex items-center space-x-2">
+      <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
+        <i class="fa-solid fa-plus"></i> 在當前工作表新增機台
+      </button>
+    </div>
+  </div>
+
+  <!-- 主畫布區域 -->
+  <main class="flex-1 p-6 max-w-[1700px] mx-auto w-full">
+    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[730px]">
+      <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
+      <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full pointer-events-none"></div>
     </div>
   </main>
 
   <!-- 登入 Modal -->
-  <div id="login-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center">
-    <div class="bg-slate-800 border border-slate-700 p-8 rounded-xl w-96 shadow-2xl">
-      <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
-        <i class="fa-solid fa-lock text-blue-500"></i> 管理員登入
-      </h2>
+  <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-96 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-lock text-blue-600"></i> 管理員登入
+        </h2>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">電子郵件</label>
-          <input type="email" id="login-email" value="n1693131@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="admin@example.com">
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">電子郵件</label>
+          <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="admin@example.com">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">密碼</label>
-          <input type="password" id="login-password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">密碼</label>
+          <input type="password" id="login-password" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="••••••••">
         </div>
-        <div id="login-error" class="text-rose-500 text-xs hidden"></div>
+        <div id="login-error" class="text-rose-600 text-xs font-medium hidden"></div>
         <div class="flex justify-end space-x-2 pt-2">
-          <button onclick="toggleAuthModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm">取消</button>
-          <button onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">登入</button>
+          <button onclick="closeLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold">取消</button>
+          <button onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm">確認登入</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 機台編輯 Modal -->
-  <div id="edit-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center">
-    <div class="bg-slate-800 border border-slate-700 p-8 rounded-xl w-[450px] shadow-2xl">
-      <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
-        <i class="fa-solid fa-gear text-indigo-400"></i> 編輯機台資訊
-      </h2>
+  <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[480px] shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-gear text-blue-600"></i> 編輯機台資訊
+        </h2>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
       <input type="hidden" id="edit-machine-id">
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">機台名稱 / 編號</label>
-          <input type="text" id="edit-name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台名稱 / 編號</label>
+          <input type="text" id="edit-name" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">專屬客戶名稱</label>
-          <input type="text" id="edit-customer" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="例如：Varian / Applied / 市場件">
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">專屬客戶名稱</label>
+          <input type="text" id="edit-customer" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例如：Varian / Applied">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">機台專屬圖片網址 (URL)</label>
-          <input type="text" id="edit-img-url" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="https://example.com/machine.jpg">
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台專屬圖片網址 (URL)</label>
+          <input type="text" id="edit-img-url" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="https://example.com/machine.jpg">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">下方備註說明</label>
-          <textarea id="edit-note" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="輸入維護狀態或交期備註..."></textarea>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">下方備註說明</label>
+          <textarea id="edit-note" rows="3" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="輸入維護或交期備註..."></textarea>
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">狀態顏色標示</label>
-          <select id="edit-status-color" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">運作狀態燈號</label>
+          <select id="edit-status-color" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500">
             <option value="bg-emerald-600">綠色 (運作中)</option>
-            <option value="bg-amber-600">黃色 (待機/維護)</option>
+            <option value="bg-amber-500">黃色 (待機/維護)</option>
             <option value="bg-rose-600">紅色 (異常/停機)</option>
           </select>
         </div>
-        <div class="flex justify-between pt-2">
-          <button onclick="deleteCurrentMachine()" class="bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white px-4 py-2 rounded-lg text-sm transition">刪除機台</button>
+        <div class="flex justify-between pt-4">
+          <button onclick="deleteCurrentMachine()" class="bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition">刪除此機台</button>
           <div class="space-x-2">
-            <button onclick="closeEditModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm">取消</button>
-            <button onclick="saveMachineChanges()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">儲存變更</button>
+            <button onclick="closeEditModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold">取消</button>
+            <button onclick="saveMachineChanges()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm">儲存變更</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Firebase SDK (Compat 版本) -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-    // ==========================================
-    // 1. Firebase 專案設定 (已整合)
-    // ==========================================
     const firebaseConfig = {
-      apiKey: "AIzaSyDmMcG37CLWoNfPuuLa3mdLpFzrmXc6btA",
-      authDomain: "machinecustomerconfig.firebaseapp.com",
-      databaseURL: "https://machinecustomerconfig-default-rtdb.firebaseio.com",
-      projectId: "machinecustomerconfig",
-      storageBucket: "machinecustomerconfig.firebasestorage.app",
-      messagingSenderId: "747666543805",
-      appId: "1:747666543805:web:f5bf9be24e3ca1cddad3d4",
-      measurementId: "G-XEP70YBJV9"
+      apiKey: "您的API_KEY",
+      authDomain: "您的專案.firebaseapp.com",
+      databaseURL: "https://您的專案-default-rtdb.firebaseio.com",
+      projectId: "您的專案ID",
+      storageBucket: "您的專案.appspot.com",
+      messagingSenderId: "您的SenderID",
+      appId: "您的AppID"
     };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // 預設資料結構
+    // 多工作表資料結構預設值
     let appState = {
-      bgImage: "",
-      machines: [
-        { id: "m_1", name: "CM77 (銑床)", customer: "Varian", imgUrl: "", note: "運行正常 / 刀具檢查OK", statusColor: "bg-emerald-600" },
-        { id: "m_2", name: "CM76 (銑床)", customer: "Applied", imgUrl: "", note: "待命保養中", statusColor: "bg-amber-600" },
-        { id: "m_3", name: "AM05 (銑床)", customer: "市場件", imgUrl: "", note: "急單趕工中", statusColor: "bg-emerald-600" }
+      activeSheetId: "sheet_auto",
+      sheets: [
+        {
+          id: "sheet_auto",
+          name: "自動化區",
+          bgImage: "",
+          machines: [
+            { id: "m_1", name: "CM77 (銑床)", customer: "Varian", imgUrl: "", note: "運作正常", statusColor: "bg-emerald-600", x: 50, y: 50 },
+            { id: "m_2", name: "CM76 (銑床)", customer: "Applied", imgUrl: "", note: "待命保養", statusColor: "bg-amber-500", x: 320, y: 50 }
+          ]
+        },
+        {
+          id: "sheet_yong",
+          name: "永進區",
+          bgImage: "",
+          machines: [
+            { id: "m_3", name: "AM05 (銑床)", customer: "市場件", imgUrl: "", note: "急單趕工", statusColor: "bg-emerald-600", x: 50, y: 50 }
+          ]
+        }
       ]
     };
 
     let isEditor = false;
 
-    // ==========================================
-    // 2. 認證與權限控制 (電子郵件與密碼登入)
-    // ==========================================
+    // 權限與登入監聽
     auth.onAuthStateChanged(user => {
       const statusEl = document.getElementById('user-status');
       const authBtn = document.getElementById('auth-toggle-btn');
       const adminToolbar = document.getElementById('admin-toolbar');
+      const sheetActionsToolbar = document.getElementById('sheet-actions-toolbar');
 
       if (user) {
         isEditor = true;
-        statusEl.className = "text-xs px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 border border-emerald-700";
-        statusEl.textContent = `● 已登入管理員: ${user.email}`;
-        authBtn.textContent = "登出";
-        authBtn.className = "bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition";
+        statusEl.className = "text-xs px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200";
+        statusEl.textContent = `● 管理員已登入: ${user.email}`;
+        authBtn.textContent = "登出系統";
+        authBtn.className = "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.remove('hidden');
+        sheetActionsToolbar.classList.remove('hidden');
       } else {
         isEditor = false;
-        statusEl.className = "text-xs px-3 py-1 rounded-full bg-slate-700 text-slate-400";
+        statusEl.className = "text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 font-medium border border-slate-200";
         statusEl.textContent = "● 唯讀模式 (未登入)";
         authBtn.textContent = "管理員登入";
-        authBtn.className = "bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition";
+        authBtn.className = "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.add('hidden');
+        sheetActionsToolbar.classList.add('hidden');
       }
       renderApp();
     });
@@ -197,111 +254,263 @@
         document.getElementById('login-modal').classList.remove('hidden');
       }
     }
-
-    function closeLoginModal() {
-      document.getElementById('login-modal').classList.add('hidden');
-    }
-
+    function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
     function handleLogin() {
       const email = document.getElementById('login-email').value;
       const pass = document.getElementById('login-password').value;
-      const errEl = document.getElementById('login-error');
-
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(() => {
-          closeLoginModal();
-          alert("登入成功！");
-        })
-        .catch(err => {
-          errEl.textContent = "登入失敗：" + err.message;
-          errEl.classList.remove('hidden');
-        });
+      auth.signInWithEmailAndPassword(email, pass).then(() => { closeLoginModal(); alert("登入成功！"); }).catch(err => {
+        document.getElementById('login-error').textContent = "登入失敗：" + err.message;
+        document.getElementById('login-error').classList.remove('hidden');
+      });
     }
 
-    // ==========================================
-    // 3. 資料同步與即時載入 (Firebase Realtime DB)
-    // ==========================================
-    const stateRef = db.ref('factory_layout_state');
-
+    // Firebase 即時同步
+    const stateRef = db.ref('factory_layout_multisheet_state');
     function syncToFirebase() {
       if (!isEditor) return;
       stateRef.set(appState).catch(err => console.error("同步失敗:", err));
     }
-
-    // 監聽雲端資料變動
     stateRef.on('value', snapshot => {
       const val = snapshot.val();
-      if (val) {
-        appState = val;
-        renderApp();
-      }
+      if (val) { appState = val; renderApp(); }
     });
 
-    // ==========================================
-    // 4. 畫面渲染與互動功能
-    // ==========================================
-    function renderApp() {
-      // 渲染背景底圖
-      const bgLayer = document.getElementById('factory-bg-layer');
-      if (appState.bgImage) {
-        bgLayer.style.backgroundImage = `url('${appState.bgImage}')`;
+    // 取得當前作用中的工作表
+    function getCurrentSheet() {
+      let sheet = appState.sheets.find(s => s.id === appState.activeSheetId);
+      if (!sheet && appState.sheets.length > 0) {
+        sheet = appState.sheets[0];
+        appState.activeSheetId = sheet.id;
       }
+      return sheet;
+    }
 
-      // 渲染機台卡片清單
-      const grid = document.getElementById('machine-grid');
-      grid.innerHTML = "";
+    // 渲染主畫面與分區頁籤
+    function renderApp() {
+      renderSheetsTabs();
 
-      appState.machines.forEach(m => {
+      const currentSheet = getCurrentSheet();
+      if (!currentSheet) return;
+
+      // 底圖
+      const bgLayer = document.getElementById('factory-bg-layer');
+      bgLayer.style.backgroundImage = currentSheet.bgImage ? `url('${currentSheet.bgImage}')` : 'none';
+
+      // 機台卡片
+      const canvasArea = document.getElementById('machine-canvas-area');
+      canvasArea.innerHTML = "";
+
+      currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col space-y-3 transition hover:border-blue-500 ${isEditor ? 'cursor-pointer' : ''}`;
-        
-        if (isEditor) {
-          card.onclick = () => openEditModal(m.id);
-        }
+        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-3.5 shadow-md w-64 flex flex-col space-y-2.5 transition-shadow hover:shadow-lg ${isEditor ? 'pointer-events-auto' : 'pointer-events-none'}`;
+        card.style.left = `${m.x || 20}px`;
+        card.style.top = `${m.y || 20}px`;
 
-        // 圖片處理 (若無自訂圖片則顯示預設圖示)
-        let imgHtml = `<div class="w-full h-32 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500"><i class="fa-solid fa-microchip text-3xl"></i></div>`;
+        let imgHtml = `<div class="w-full h-28 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-dashed border-slate-200"><i class="fa-solid fa-microchip text-2xl"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
-          imgHtml = `<div class="w-full h-32 bg-slate-800 rounded-lg overflow-hidden"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-xs\'>圖片載入失敗</div>'"></div>`;
+          imgHtml = `<div class="w-full h-28 bg-slate-100 rounded-lg overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover"></div>`;
         }
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-white text-base">${m.name}</span>
-            <span class="text-xs px-2.5 py-1 rounded font-medium text-white ${m.statusColor || 'bg-emerald-600'}">${m.customer || '未指定客戶'}</span>
+            <span class="font-bold text-slate-900 text-sm tracking-tight">${m.name}</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'}">${m.customer || '未指定客戶'}</span>
           </div>
           ${imgHtml}
-          <div class="text-xs bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60 text-slate-300">
-            <span class="text-slate-400 block mb-1 font-semibold"><i class="fa-solid fa-note-sticky mr-1"></i>備註：</span>
+          <div class="text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-200 text-slate-600 leading-relaxed">
+            <span class="text-slate-400 block font-semibold mb-0.5"><i class="fa-solid fa-note-sticky mr-1"></i>備註：</span>
             ${m.note || '無備註資料'}
           </div>
         `;
-        grid.appendChild(card);
+
+        card.onclick = () => { if (isEditor && !card.classList.contains('is-dragging')) openEditModal(m.id); };
+        if (isEditor) initDragAndDrop(card, m);
+        canvasArea.appendChild(card);
       });
     }
 
-    // ==========================================
-    // 5. 匯入/匯出與編輯功能
-    // ==========================================
-    function handleBgImageUpload(event) {
+    // 渲染工作表分區頁籤
+    function renderSheetsTabs() {
+      const container = document.getElementById('sheets-tab-container');
+      container.innerHTML = "";
+
+      appState.sheets.forEach(s => {
+        const isActive = s.id === appState.activeSheetId;
+        const tab = document.createElement('div');
+        tab.className = `flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}`;
+        
+        tab.innerHTML = `
+          <i class="fa-solid fa-table-cells text-[11px]"></i>
+          <span ondblclick="if(isEditor) renameSheet('${s.id}')">${s.name}</span>
+          ${(isEditor && appState.sheets.length > 1) ? `<i class="fa-solid fa-xmark ml-1.5 p-1 rounded hover:bg-black/10" onclick="event.stopPropagation(); deleteSheet('${s.id}')"></i>` : ''}
+        `;
+
+        tab.onclick = () => {
+          appState.activeSheetId = s.id;
+          renderApp();
+        };
+
+        container.appendChild(tab);
+      });
+    }
+
+    // 工作表操作：新增、重新命名、刪除
+    function addNewSheet() {
+      if (!isEditor) return;
+      const sheetName = prompt("請輸入新工作表 (分區) 名稱：", `分區_${appState.sheets.length + 1}`);
+      if (!sheetName) return;
+
+      const newSheet = {
+        id: `sheet_${Date.now()}`,
+        name: sheetName.trim(),
+        bgImage: "",
+        machines: []
+      };
+
+      appState.sheets.push(newSheet);
+      appState.activeSheetId = newSheet.id;
+      syncToFirebase();
+      renderApp();
+    }
+
+    function renameSheet(sheetId) {
+      if (!isEditor) return;
+      const sheet = appState.sheets.find(s => s.id === sheetId);
+      if (!sheet) return;
+      const newName = prompt("修改工作表名稱：", sheet.name);
+      if (newName && newName.trim() !== "") {
+        sheet.name = newName.trim();
+        syncToFirebase();
+        renderApp();
+      }
+    }
+
+    function deleteSheet(sheetId) {
+      if (!isEditor) return;
+      if (appState.sheets.length <= 1) {
+        alert("至少需要保留一個工作表！");
+        return;
+      }
+      if (confirm("確定要刪除此工作表及其中所有機台配置嗎？")) {
+        appState.sheets = appState.sheets.filter(s => s.id !== sheetId);
+        appState.activeSheetId = appState.sheets[0].id;
+        syncToFirebase();
+        renderApp();
+      }
+    }
+
+    // 自由拖曳定位
+    function initDragAndDrop(card, machineData) {
+      let startX, startY, initialX, initialY;
+      card.onpointerdown = (e) => {
+        if (!isEditor) return;
+        startX = e.clientX; startY = e.clientY;
+        initialX = machineData.x || 20; initialY = machineData.y || 20;
+        card.classList.add('dragging', 'is-dragging');
+        card.setPointerCapture(e.pointerId);
+
+        card.onpointermove = (ev) => {
+          let newX = initialX + (ev.clientX - startX);
+          let newY = initialY + (ev.clientY - startY);
+          const container = document.getElementById('factory-canvas-container');
+          newX = Math.max(0, Math.min(newX, container.clientWidth - 260));
+          newY = Math.max(0, Math.min(newY, container.clientHeight - 200));
+          machineData.x = newX; machineData.y = newY;
+          card.style.left = `${newX}px`; card.style.top = `${newY}px`;
+        };
+
+        card.onpointerup = (ev) => {
+          card.releasePointerCapture(ev.pointerId);
+          card.onpointermove = null; card.onpointerup = null;
+          card.classList.remove('dragging');
+          setTimeout(() => card.classList.remove('is-dragging'), 50);
+          syncToFirebase();
+        };
+      };
+    }
+
+    // Excel 匯入/匯出 (支援多工作表打包)
+    function exportToExcel() {
+      const workbook = XLSX.utils.book_new();
+      appState.sheets.forEach(sheet => {
+        const rows = sheet.machines.map(m => ({
+          "機台編號": m.name,
+          "專屬客戶": m.customer,
+          "圖片網址": m.imgUrl,
+          "備註說明": m.note,
+          "狀態顏色": m.statusColor,
+          "X座標": m.x,
+          "Y座標": m.y
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ "機台編號": "", "專屬客戶": "", "圖片網址": "", "備註說明": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }]);
+        XLSX.utils.book_append_sheet(workbook, ws, sheet.name);
+      });
+      XLSX.writeFile(workbook, `多工作表廠區配置_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function importFromExcel(event) {
       if (!isEditor) return alert("請先登入管理員帳號！");
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          appState.sheets = workbook.SheetNames.map((sheetName, sIdx) => {
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            return {
+              id: `sheet_imp_${sIdx}_${Date.now()}`,
+              name: sheetName,
+              bgImage: "",
+              machines: rows.map((row, mIdx) => ({
+                id: `m_${sIdx}_${mIdx}_${Date.now()}`,
+                name: row["機台編號"] || `機台_${mIdx + 1}`,
+                customer: row["專屬客戶"] || "未指定",
+                imgUrl: row["圖片網址"] || "",
+                note: row["備註說明"] || "",
+                statusColor: row["狀態顏色"] || "bg-emerald-600",
+                x: Number(row["X座標"]) || (50 + (mIdx % 4) * 280),
+                y: Number(row["Y座標"]) || (50 + Math.floor(mIdx / 4) * 220)
+              }))
+            };
+          });
+
+          if (appState.sheets.length > 0) appState.activeSheetId = appState.sheets[0].id;
+          syncToFirebase();
+          renderApp();
+          alert("Excel 多工作表資料成功匯入！");
+        } catch (err) {
+          console.error(err);
+          alert("解析 Excel 失敗。");
+        }
+        event.target.value = "";
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function handleBgImageUpload(event) {
+      if (!isEditor) return alert("請先登入！");
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        appState.bgImage = e.target.result;
+        const currentSheet = getCurrentSheet();
+        currentSheet.bgImage = e.target.result;
         syncToFirebase();
         renderApp();
-        alert("廠區底圖上傳成功！");
+        alert("當前分區底圖上傳成功！");
       };
       reader.readAsDataURL(file);
     }
 
     function exportLayoutPNG() {
       const container = document.getElementById('factory-canvas-container');
-      html2canvas(container, { useCORS: true, backgroundColor: '#020617' }).then(canvas => {
+      html2canvas(container, { useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `廠區配置圖_${new Date().toISOString().slice(0,10)}.png`;
+        link.download = `廠區配置圖_${getCurrentSheet().name}_${new Date().toISOString().slice(0,10)}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       });
@@ -309,14 +518,15 @@
 
     function addNewMachine() {
       if (!isEditor) return;
-      const newId = `m_${Date.now()}`;
-      appState.machines.push({
-        id: newId,
-        name: "新機台代號",
+      const currentSheet = getCurrentSheet();
+      currentSheet.machines.push({
+        id: `m_${Date.now()}`,
+        name: "新機台",
         customer: "指定客戶",
         imgUrl: "",
-        note: "請點擊編輯備註",
-        statusColor: "bg-emerald-600"
+        note: "備註說明",
+        statusColor: "bg-emerald-600",
+        x: 50, y: 50
       });
       syncToFirebase();
       renderApp();
@@ -324,35 +534,31 @@
 
     function openEditModal(machineId) {
       if (!isEditor) return;
-      const machine = appState.machines.find(m => m.id === machineId);
-      if (!machine) return;
+      const currentSheet = getCurrentSheet();
+      const m = currentSheet.machines.find(item => item.id === machineId);
+      if (!m) return;
 
-      document.getElementById('edit-machine-id').value = machine.id;
-      document.getElementById('edit-name').value = machine.name;
-      document.getElementById('edit-customer').value = machine.customer || "";
-      document.getElementById('edit-img-url').value = machine.imgUrl || "";
-      document.getElementById('edit-note').value = machine.note || "";
-      document.getElementById('edit-status-color').value = machine.statusColor || "bg-emerald-600";
-
+      document.getElementById('edit-machine-id').value = m.id;
+      document.getElementById('edit-name').value = m.name;
+      document.getElementById('edit-customer').value = m.customer || "";
+      document.getElementById('edit-img-url').value = m.imgUrl || "";
+      document.getElementById('edit-note').value = m.note || "";
+      document.getElementById('edit-status-color').value = m.statusColor || "bg-emerald-600";
       document.getElementById('edit-modal').classList.remove('hidden');
     }
-
-    function closeEditModal() {
-      document.getElementById('login-modal').classList.add('hidden'); // 確保關閉登入框
-      document.getElementById('edit-modal').classList.add('hidden');
-    }
+    function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
 
     function saveMachineChanges() {
       if (!isEditor) return;
+      const currentSheet = getCurrentSheet();
       const id = document.getElementById('edit-machine-id').value;
-      const machine = appState.machines.find(m => m.id === id);
-      if (machine) {
-        machine.name = document.getElementById('edit-name').value;
-        machine.customer = document.getElementById('edit-customer').value;
-        machine.imgUrl = document.getElementById('edit-img-url').value;
-        machine.note = document.getElementById('edit-note').value;
-        machine.statusColor = document.getElementById('edit-status-color').value;
-
+      const m = currentSheet.machines.find(item => item.id === id);
+      if (m) {
+        m.name = document.getElementById('edit-name').value;
+        m.customer = document.getElementById('edit-customer').value;
+        m.imgUrl = document.getElementById('edit-img-url').value;
+        m.note = document.getElementById('edit-note').value;
+        m.statusColor = document.getElementById('edit-status-color').value;
         syncToFirebase();
         renderApp();
         closeEditModal();
@@ -361,9 +567,10 @@
 
     function deleteCurrentMachine() {
       if (!isEditor) return;
-      if (confirm("確定要刪除這個機台嗎？")) {
+      if (confirm("確定刪除此機台？")) {
+        const currentSheet = getCurrentSheet();
         const id = document.getElementById('edit-machine-id').value;
-        appState.machines = appState.machines.filter(m => m.id !== id);
+        currentSheet.machines = currentSheet.machines.filter(item => item.id !== id);
         syncToFirebase();
         renderApp();
         closeEditModal();
