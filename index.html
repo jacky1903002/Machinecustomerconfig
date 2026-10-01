@@ -20,7 +20,7 @@
       user-select: none;
       touch-action: none;
       transition: box-shadow 0.2s ease;
-      width: 140px; /* 1/4 大小 */
+      width: 140px;
     }
     .machine-card:active {
       cursor: grabbing;
@@ -37,8 +37,11 @@
   <!-- 頂部商業導覽列 -->
   <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
     <div class="flex items-center space-x-3">
-      <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20">
-        <i class="fa-solid fa-industry"></i>
+      <!-- 網頁最左側 Logo 圖片 / 圖示區塊 (登入後點擊可更改圖片連結) -->
+      <div id="brand-logo-container" onclick="changeLogoUrl()" title="點擊可設定 Logo 圖片連結" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20 overflow-hidden cursor-pointer hover:opacity-90 transition">
+        <div id="brand-logo-content" class="w-full h-full flex items-center justify-center">
+          <i class="fa-solid fa-industry"></i>
+        </div>
       </div>
       <div>
         <h1 class="text-lg font-bold text-slate-900 tracking-tight">智慧廠區多工作表配置系統</h1>
@@ -89,7 +92,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊卡片可編輯資訊，登入後新增或拖曳將直接強制寫入雲端資料庫。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>登入後可透過機台卡片右上角齒輪或雙擊編輯資訊，拖曳時自動磁吸對齊相鄰機台。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -100,6 +103,19 @@
 
   <!-- 主畫布區域 -->
   <main class="flex-1 p-6 max-w-[1700px] mx-auto w-full">
+    <!-- 畫布正上方的廠區名稱與編輯標題列 -->
+    <div class="flex justify-between items-center mb-3 px-2">
+      <div class="flex items-center space-x-2">
+        <h2 id="current-zone-title" class="text-xl font-bold text-slate-800">廠區配置預覽</h2>
+        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-2xs">
+          <i class="fa-solid fa-pen-to-square text-blue-600"></i> 編輯廠區名稱
+        </button>
+      </div>
+      <div class="text-xs text-slate-400">
+        <span><i class="fa-solid fa-magnet text-indigo-500 mr-1"></i>具備智慧磁吸對齊功能</span>
+      </div>
+    </div>
+
     <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[730px]">
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full pointer-events-none"></div>
@@ -204,6 +220,7 @@
 
     let appState = {
       activeSheetId: "sheet_auto",
+      logoUrl: "", // 新增 Logo 圖片連結儲存
       updatedAt: null,
       sheets: [
         {
@@ -227,7 +244,6 @@
     };
 
     let isEditor = false;
-    let initialLoaded = false;
 
     // ==========================================
     // 2. 認證監聽
@@ -236,6 +252,7 @@
       const authBtn = document.getElementById('auth-toggle-btn');
       const adminToolbar = document.getElementById('admin-toolbar');
       const sheetActionsToolbar = document.getElementById('sheet-actions-toolbar');
+      const editZoneBtn = document.getElementById('edit-zone-name-btn');
 
       if (user) {
         isEditor = true;
@@ -243,12 +260,14 @@
         authBtn.className = "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.remove('hidden');
         sheetActionsToolbar.classList.remove('hidden');
+        editZoneBtn.classList.remove('hidden');
       } else {
         isEditor = false;
         authBtn.textContent = "管理員登入";
         authBtn.className = "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.add('hidden');
         sheetActionsToolbar.classList.add('hidden');
+        editZoneBtn.classList.add('hidden');
       }
       renderApp();
     });
@@ -278,22 +297,14 @@
     }
 
     // ==========================================
-    // 3. 雲端同步與資料初始化 (改用 v8 路徑並加入完整除錯)
+    // 3. 雲端同步與資料初始化
     // ==========================================
     const stateRef = db.ref('factory_layout_commercial_v8');
 
     function syncToFirebase() {
-      if (!isEditor) {
-        console.warn("未登入管理員，無法寫入雲端");
-        return;
-      }
+      if (!isEditor) return;
       appState.updatedAt = new Date().toISOString();
-      console.log("正在同步資料至 Firebase...", appState);
-      
-      stateRef.set(appState).then(() => {
-        console.log("Firebase 寫入成功！");
-      }).catch(err => {
-        console.error("Firebase 寫入失敗錯誤：", err);
+      stateRef.set(appState).catch(err => {
         alert("儲存至雲端失敗：" + err.message);
       });
     }
@@ -309,18 +320,14 @@
       }
     });
 
-    // 監聽雲端資料變更
     stateRef.on('value', snapshot => {
       const val = snapshot.val();
       if (val) {
-        console.log("從雲端載入最新資料:", val);
         appState = val;
-        // 確保 activeSheetId 正常
         if (!appState.sheets.some(s => s.id === appState.activeSheetId) && appState.sheets.length > 0) {
           appState.activeSheetId = appState.sheets[0].id;
         }
       } else {
-        console.log("雲端尚無資料，寫入預設資料...");
         syncToFirebase();
       }
       renderApp();
@@ -334,6 +341,27 @@
         timeEl.textContent = `上次更新：${dateObj.toLocaleString('zh-TW', { hour12: false })}`;
       } else {
         timeEl.textContent = `上次更新：尚未同步`;
+      }
+    }
+
+    // Logo 圖片網址設定
+    function changeLogoUrl() {
+      if (!isEditor) return;
+      const currentUrl = appState.logoUrl || "";
+      const newUrl = prompt("請輸入網頁左上角 Logo 的圖片連結 (URL)：", currentUrl);
+      if (newUrl !== null) {
+        appState.logoUrl = newUrl.trim();
+        syncToFirebase();
+        renderLogo();
+      }
+    }
+
+    function renderLogo() {
+      const logoContainer = document.getElementById('brand-logo-content');
+      if (appState.logoUrl && appState.logoUrl !== "") {
+        logoContainer.innerHTML = `<img src="${appState.logoUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-industry\'></i>'">`;
+      } else {
+        logoContainer.innerHTML = `<i class="fa-solid fa-industry"></i>`;
       }
     }
 
@@ -351,10 +379,14 @@
 
     function renderApp() {
       renderSheetsTabs();
+      renderLogo();
       updateTimeDisplay();
 
       const currentSheet = getCurrentSheet();
       if (!currentSheet) return;
+
+      // 更新畫布正上方的廠區名稱標題
+      document.getElementById('current-zone-title').textContent = currentSheet.name;
 
       const bgLayer = document.getElementById('factory-bg-layer');
       bgLayer.style.backgroundImage = currentSheet.bgImage ? `url('${currentSheet.bgImage}')` : 'none';
@@ -373,10 +405,19 @@
           imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[10px]\'>網址失效</div>'"></div>`;
         }
 
+        // 登入後在卡片右上角加入明確的編輯齒輪按鈕，保障點擊穩定度
+        let editBtnHtml = '';
+        if (isEditor) {
+          editBtnHtml = `<button onclick="event.stopPropagation(); openEditModal('${m.id}')" class="text-slate-400 hover:text-blue-600 p-0.5 transition" title="編輯機台"><i class="fa-solid fa-gear text-[11px]"></i></button>`;
+        }
+
         card.innerHTML = `
           <div class="flex justify-between items-center pointer-events-none">
-            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[75px]">${m.name}</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[50px]">${m.customer || '客戶'}</span>
+            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[65px]">${m.name}</span>
+            <div class="flex items-center space-x-1">
+              <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate max-w-[45px]">${m.customer || '客戶'}</span>
+              <div class="pointer-events-auto">${editBtnHtml}</div>
+            </div>
           </div>
           ${imgHtml}
           <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight pointer-events-none">
@@ -410,7 +451,7 @@
           ${(isEditor && appState.sheets.length > 1) ? `<i class="fa-solid fa-xmark ml-1.5 p-1 rounded hover:bg-black/10" onclick="event.stopPropagation(); deleteSheet('${s.id}')"></i>` : ''}
         `;
 
-        tab.ondblclick = () => { if (isEditor) renameSheet(s.id); };
+        tab.ondblclick = () => { if (isEditor) renameCurrentSheet(); };
         tab.onclick = () => {
           appState.activeSheetId = s.id;
           renderApp();
@@ -438,11 +479,11 @@
       renderApp();
     }
 
-    function renameSheet(sheetId) {
+    function renameCurrentSheet() {
       if (!isEditor) return;
-      const sheet = appState.sheets.find(s => s.id === sheetId);
+      const sheet = getCurrentSheet();
       if (!sheet) return;
-      const newName = prompt("修改工作表名稱：", sheet.name);
+      const newName = prompt("修改當前廠區 / 工作表名稱：", sheet.name);
       if (newName && newName.trim() !== "") {
         sheet.name = newName.trim();
         syncToFirebase();
@@ -465,7 +506,6 @@
     function initDragAndDrop(card, machineData) {
       let startX, startY, initialX, initialY;
       
-      // 建立對齊輔助線元素（如果還沒有的話）
       let guideLineX = document.getElementById('snap-guideline-x');
       let guideLineY = document.getElementById('snap-guideline-y');
       if (!guideLineX) {
@@ -482,10 +522,7 @@
       }
 
       card.onpointerdown = (e) => {
-        if (!isEditor) {
-          alert("請先點擊右上角「管理員登入」後才能移動機台！");
-          return;
-        }
+        if (!isEditor) return;
 
         startX = e.clientX; startY = e.clientY;
         initialX = machineData.x || 30; initialY = machineData.y || 30;
@@ -503,16 +540,14 @@
           newX = Math.max(10, Math.min(newX, maxX));
           newY = Math.max(10, Math.min(newY, maxY));
 
-          // --- 自動對齊（磁吸）邏輯 ---
-          const SNAP_THRESHOLD = 10; // 容許對齊的像素距離
+          // 自動對齊磁吸邏輯
+          const SNAP_THRESHOLD = 10;
           let snapX = null;
           let snapY = null;
 
-          // 取得畫布上所有其他機台卡片
           const allCards = container.querySelectorAll('.machine-card');
-          
           allCards.forEach(otherCard => {
-            if (otherCard === card) return; // 排除自己
+            if (otherCard === card) return;
             
             const oLeft = otherCard.offsetLeft;
             const oTop = otherCard.offsetTop;
@@ -530,22 +565,17 @@
             const cCenterX = newX + cWidth / 2;
             const cCenterY = newY + cHeight / 2;
 
-            // X 軸對齊檢查（左對左、右對右、中心對中心、左對右、右對左）
             const xTargets = [
-              { val: oLeft, targetNew: oLeft },                    // 左對左
-              { val: oRight, targetNew: oRight - cWidth },         // 右對右
-              { val: oCenterX, targetNew: oCenterX - cWidth / 2 },   // 中心對中心
-              { val: oRight, targetNew: oRight },                    // 左對相鄰右
-              { val: oLeft, targetNew: oLeft - cWidth }            // 右對相鄰左
+              { val: oLeft, targetNew: oLeft },
+              { val: oRight, targetNew: oRight - cWidth },
+              { val: oCenterX, targetNew: oCenterX - cWidth / 2 },
+              { val: oRight, targetNew: oRight },
+              { val: oLeft, targetNew: oLeft - cWidth }
             ];
 
             xTargets.forEach(t => {
-              // 檢查當前機台的各個邊界或中心是否靠近目標
               [newX, cRight, cCenterX].forEach(currPos => {
                 if (Math.abs(currPos - t.val) < SNAP_THRESHOLD) {
-                  // 計算微調後的 newX
-                  let diff = t.val - currPos;
-                  // 簡單起見，直接對齊目標位置
                   if (Math.abs(newX - t.targetNew) < SNAP_THRESHOLD * 2) {
                     newX = t.targetNew;
                     snapX = t.val;
@@ -554,13 +584,12 @@
               });
             });
 
-            // Y 軸對齊檢查（頂對頂、底對底、中心對中心等）
             const yTargets = [
-              { val: oTop, targetNew: oTop },                      // 頂對頂
-              { val: oBottom, targetNew: oBottom - cHeight },      // 底對底
-              { val: oCenterY, targetNew: oCenterY - cHeight / 2 },// 中心對中心
-              { val: oBottom, targetNew: oBottom },                  // 頂對相鄰底
-              { val: oTop, targetNew: oTop - cHeight }             // 底對相鄰頂
+              { val: oTop, targetNew: oTop },
+              { val: oBottom, targetNew: oBottom - cHeight },
+              { val: oCenterY, targetNew: oCenterY - cHeight / 2 },
+              { val: oBottom, targetNew: oBottom },
+              { val: oTop, targetNew: oTop - cHeight }
             ];
 
             yTargets.forEach(t => {
@@ -575,7 +604,6 @@
             });
           });
 
-          // 處理輔助線顯示
           if (snapX !== null) {
             guideLineX.style.left = `${snapX}px`;
             guideLineX.style.display = 'block';
@@ -589,7 +617,6 @@
           } else {
             guideLineY.style.display = 'none';
           }
-          // --------------------------
 
           machineData.x = newX; 
           machineData.y = newY;
@@ -598,7 +625,6 @@
         };
 
         card.onpointerup = (ev) => {
-          // 隱藏輔助線
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
 
@@ -610,6 +636,7 @@
         };
       };
     }
+
     // Excel 匯入/匯出
     function exportToExcel() {
       const workbook = XLSX.utils.book_new();
@@ -686,10 +713,7 @@
     }
 
     function addNewMachine() {
-      if (!isEditor) {
-        alert("請先登入管理員帳號才能新增機台！");
-        return;
-      }
+      if (!isEditor) return;
       const currentSheet = getCurrentSheet();
       currentSheet.machines.push({
         id: `m_${Date.now()}`, 
