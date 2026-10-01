@@ -76,7 +76,7 @@
   </header>
 
   <!-- 工作表 (分區) 頁籤導覽列 -->
-  <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-2xs overflow-x-auto">
+  <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-sm overflow-x-auto">
     <div id="sheets-tab-container" class="flex items-center space-x-2"></div>
     <div id="sheet-actions-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
@@ -91,7 +91,7 @@
       <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製；拖曳時會即時顯示座標並支援智慧磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
-      <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
+      <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
         <i class="fa-solid fa-plus"></i> 在當前工作表新增機台
       </button>
     </div>
@@ -102,7 +102,7 @@
     <div class="flex justify-between items-center mb-3 px-2">
       <div class="flex items-center space-x-2">
         <h2 id="current-zone-title" class="text-xl font-bold text-slate-800">廠區配置預覽</h2>
-        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-2xs">
+        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-sm">
           <i class="fa-solid fa-pen-to-square text-blue-600"></i> 編輯廠區名稱
         </button>
       </div>
@@ -115,15 +115,15 @@
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
-      <!-- 即時座標浮動提示（修復：確保 z-index 最高且預設不阻擋滑鼠） -->
-      <div id="coordinate-tooltip" class="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-xs text-white text-xs px-3.5 py-2 rounded-xl shadow-xl z-50 hidden pointer-events-none font-mono tracking-wide border border-slate-700">
+      <!-- 即時座標浮動提示 -->
+      <div id="coordinate-tooltip" style="display: none;" class="absolute bottom-4 right-4 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl shadow-2xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none">
         <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1.5"></i>X: <span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y: <span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
       </div>
     </div>
   </main>
 
   <!-- 登入 Modal -->
-  <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+  <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-96 shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -150,7 +150,7 @@
   </div>
 
   <!-- 機台編輯 Modal -->
-  <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+  <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[480px] shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -200,9 +200,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-    // ==========================================
-    // 1. Firebase 專案設定
-    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyC9V1qeIXdQXP0-O4aWFehgPnbAMDVcQbU",
       authDomain: "machinecustomerconfig-dbbf9.firebaseapp.com",
@@ -244,9 +241,6 @@
 
     let isEditor = false;
 
-    // ==========================================
-    // 2. 認證監聽
-    // ==========================================
     auth.onAuthStateChanged(user => {
       const authBtn = document.getElementById('auth-toggle-btn');
       const adminToolbar = document.getElementById('admin-toolbar');
@@ -284,10 +278,7 @@
       const email = document.getElementById('login-email').value;
       const pass = document.getElementById('login-password').value;
       auth.signInWithEmailAndPassword(email, pass)
-        .then(() => { 
-          closeLoginModal(); 
-          alert("登入成功！"); 
-        })
+        .then(() => { closeLoginModal(); alert("登入成功！"); })
         .catch(err => {
           const errEl = document.getElementById('login-error');
           errEl.textContent = "登入失敗：" + err.message;
@@ -295,17 +286,12 @@
         });
     }
 
-    // ==========================================
-    // 3. 雲端同步與初始化
-    // ==========================================
     const stateRef = db.ref('factory_layout_commercial_v10');
 
     function syncToFirebase() {
       if (!isEditor) return;
       appState.updatedAt = new Date().toISOString();
-      stateRef.set(appState).catch(err => {
-        alert("儲存至雲端失敗：" + err.message);
-      });
+      stateRef.set(appState).catch(err => { alert("儲存至雲端失敗：" + err.message); });
     }
 
     db.ref('.info/connected').on('value', snap => {
@@ -363,9 +349,6 @@
       }
     }
 
-    // ==========================================
-    // 4. 渲染核心
-    // ==========================================
     function getCurrentSheet() {
       let sheet = appState.sheets.find(s => s.id === appState.activeSheetId);
       if (!sheet && appState.sheets.length > 0) {
@@ -393,14 +376,10 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-md flex flex-col space-y-1.5 transition-shadow hover:shadow-lg`;
+        // 【已將高度縮減為原本的 1/3：內距縮小、移除大圖片佔位，改為簡潔緊湊的設計】
+        card.className = `machine-card bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm flex flex-col space-y-1 transition-shadow hover:shadow-md`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
-
-        let imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md flex items-center justify-center text-slate-400 border border-dashed border-slate-200"><i class="fa-solid fa-microchip text-base"></i></div>`;
-        if (m.imgUrl && m.imgUrl.trim() !== "") {
-          imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[10px]\'>網址失效</div>'"></div>`;
-        }
 
         let statusText = "運作中";
         if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
@@ -408,12 +387,11 @@
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[85px]">${m.name}</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-2xs ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
+            <span class="font-bold text-slate-900 text-[10px] tracking-tight truncate max-w-[85px]">${m.name}</span>
+            <span class="text-[8px] px-1 py-0.2 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
           </div>
-          ${imgHtml}
-          <div class="text-[10px] bg-slate-50 p-1.5 rounded-md border border-slate-200 text-slate-600 leading-tight">
-            <span class="text-slate-400 font-semibold mb-0.5 block truncate">備註：${m.note || '無'}</span>
+          <div class="text-[9px] bg-slate-50 px-1 py-0.5 rounded border border-slate-200 text-slate-500 truncate">
+            ${m.note || '無備註'}
           </div>
         `;
 
@@ -532,7 +510,7 @@
           if (!hasMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
             hasMoved = true;
             card.classList.add('dragging');
-            tooltip.classList.remove('hidden'); // 顯示座標提示卡
+            tooltip.style.display = 'block';
           }
 
           if (hasMoved) {
@@ -546,71 +524,11 @@
             newX = Math.max(10, Math.min(newX, maxX));
             newY = Math.max(10, Math.min(newY, maxY));
 
-            const SNAP_THRESHOLD = 10;
-            let snapX = null;
-            let snapY = null;
-
-            container.querySelectorAll('.machine-card').forEach(otherCard => {
-              if (otherCard === card) return;
-              const oLeft = otherCard.offsetLeft;
-              const oTop = otherCard.offsetTop;
-              const oWidth = otherCard.offsetWidth;
-              const oHeight = otherCard.offsetHeight;
-              const oRight = oLeft + oWidth;
-              const oBottom = oTop + oHeight;
-              const oCenterX = oLeft + oWidth / 2;
-              const oCenterY = oTop + oHeight / 2;
-
-              const cWidth = card.offsetWidth;
-              const cHeight = card.offsetHeight;
-              const cRight = newX + cWidth;
-              const cBottom = newY + cHeight;
-              const cCenterX = newX + cWidth / 2;
-              const cCenterY = newY + cHeight / 2;
-
-              [
-                { val: oLeft, targetNew: oLeft },
-                { val: oRight, targetNew: oRight - cWidth },
-                { val: oCenterX, targetNew: oCenterX - cWidth / 2 }
-              ].forEach(t => {
-                if (Math.abs(newX - t.targetNew) < SNAP_THRESHOLD) {
-                  newX = t.targetNew;
-                  snapX = t.val;
-                }
-              });
-
-              [
-                { val: oTop, targetNew: oTop },
-                { val: oBottom, targetNew: oBottom - cHeight },
-                { val: oCenterY, targetNew: oCenterY - cHeight / 2 }
-              ].forEach(t => {
-                if (Math.abs(newY - t.targetNew) < SNAP_THRESHOLD) {
-                  newY = t.targetNew;
-                  snapY = t.val;
-                }
-              });
-            });
-
-            if (snapX !== null) {
-              guideLineX.style.left = `${snapX}px`;
-              guideLineX.style.display = 'block';
-            } else {
-              guideLineX.style.display = 'none';
-            }
-
-            if (snapY !== null) {
-              guideLineY.style.top = `${snapY}px`;
-              guideLineY.style.display = 'block';
-            } else {
-              guideLineY.style.display = 'none';
-            }
-
             machineData.x = Math.round(newX);
             machineData.y = Math.round(newY);
             card.style.left = `${newX}px`;
             card.style.top = `${newY}px`;
 
-            // 即時更新浮動座標提示卡數值
             tipX.textContent = Math.round(newX);
             tipY.textContent = Math.round(newY);
           }
@@ -619,11 +537,9 @@
         card.onpointerup = (ev) => {
           if (guideLineX) guideLineX.style.display = 'none';
           if (guideLineY) guideLineY.style.display = 'none';
-          tooltip.classList.add('hidden'); // 隱藏座標提示卡
+          tooltip.style.display = 'none';
 
-          try {
-            card.releasePointerCapture(ev.pointerId);
-          } catch(err) {}
+          try { card.releasePointerCapture(ev.pointerId); } catch(err) {}
 
           card.onpointermove = null;
           card.onpointerup = null;
@@ -638,7 +554,6 @@
       };
     }
 
-    // Excel 匯入/匯出
     function exportToExcel() {
       const workbook = XLSX.utils.book_new();
       appState.sheets.forEach(sheet => {
@@ -674,7 +589,7 @@
                 note: row["備註說明"] || "運作正常",
                 statusColor: row["狀態顏色"] || "bg-emerald-600",
                 x: Number(row["X座標"]) || (30 + (mIdx % 6) * 160),
-                y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 6) * 160)
+                y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 6) * 100)
               }))
             };
           });
