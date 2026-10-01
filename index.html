@@ -380,7 +380,6 @@
         if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
         if (m.statusColor === "bg-rose-600") statusText = "異常/停機";
 
-        // 中間顯示圖片區塊
         let imgHtml = `<div class="w-full h-7 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
           imgHtml = `<div class="w-full h-7 bg-slate-50 rounded overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[8px]\'>失效</div>'"></div>`;
@@ -468,6 +467,7 @@
       }
     }
 
+    // 支援智慧磁吸對齊與拖曳互動
     function initCardInteraction(card, machineData) {
       let startX = 0, startY = 0;
       let initialX = 0, initialY = 0;
@@ -515,6 +515,35 @@
           if (hasMoved) {
             let newX = initialX + dx;
             let newY = initialY + dy;
+
+            const currentSheet = getCurrentSheet();
+            const snapThreshold = 6; // 磁吸距離容許值
+
+            let snappedX = false;
+            let snappedY = false;
+
+            // 智慧磁吸運算
+            currentSheet.machines.forEach(other => {
+              if (other.id === machineData.id) return;
+              
+              // X 軸對齊檢查
+              if (Math.abs(newX - other.x) < snapThreshold) {
+                newX = other.x;
+                snappedX = true;
+                guideLineX.style.left = `${newX + card.offsetWidth / 2}px`;
+                guideLineX.style.display = 'block';
+              }
+              // Y 軸對齊檢查
+              if (Math.abs(newY - other.y) < snapThreshold) {
+                newY = other.y;
+                snappedY = true;
+                guideLineY.style.top = `${newY + card.offsetHeight / 2}px`;
+                guideLineY.style.display = 'block';
+              }
+            });
+
+            if (!snappedX) guideLineX.style.display = 'none';
+            if (!snappedY) guideLineY.style.display = 'none';
 
             const container = document.getElementById('factory-canvas-container');
             const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
