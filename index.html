@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>廠區機台與客戶配置管理系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- html2canvas 用於匯出配置圖截圖 -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- 頂部導覽列 -->
+  <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xl">
+        <i class="fa-solid fa-industry"></i>
+      </div>
+      <h1 class="text-xl font-bold tracking-wider">廠區機台配置與客戶對應系統</h1>
+    </div>
+    <div class="flex items-center space-x-3">
+      <span id="user-status" class="text-xs px-3 py-1 rounded-full bg-slate-700 text-slate-400">● 唯讀模式 (未登入)</span>
+      <button onclick="exportLayoutPNG()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+        <i class="fa-solid fa-download"></i> 匯出配置圖
+      </button>
+      <label class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer flex items-center gap-2">
+        <i class="fa-solid fa-upload"></i> 上傳廠區底圖
+        <input type="file" id="bg-image-input" accept="image/*" class="hidden" onchange="handleBgImageUpload(event)">
+      </label>
+      <button id="auth-toggle-btn" onclick="toggleAuthModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+        管理員登入
+      </button>
+    </div>
+  </header>
+
+  <!-- 工具列（僅登入後可見操作） -->
+  <div class="bg-slate-800/50 border-b border-slate-700/50 px-6 py-2 flex items-center justify-between text-sm">
+    <div class="flex items-center space-x-4">
+      <span class="text-slate-400">提示：點擊機台卡片可編輯專屬客戶、圖片網址與備註。</span>
+    </div>
+    <div id="admin-toolbar" class="hidden flex items-center space-x-2">
+      <button onclick="addNewMachine()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition">
+        <i class="fa-solid fa-plus"></i> 新增機台
+      </button>
+    </div>
+  </div>
+
+  <!-- 主佈景與機台配置區域 -->
+  <main class="flex-1 p-6 max-w-[1600px] mx-auto w-full">
+    <div id="factory-canvas-container" class="relative rounded-xl border border-slate-700 bg-slate-950 overflow-hidden min-h-[700px] shadow-2xl flex items-center justify-center">
+      <!-- 廠區背景底圖 -->
+      <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-40 pointer-events-none"></div>
+      
+      <!-- 機台卡片佈局網格 -->
+      <div id="machine-grid" class="relative z-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 p-8 w-full h-full items-start">
+        <!-- 動態生成機台 -->
+      </div>
+    </div>
+  </main>
+
+  <!-- 登入 Modal -->
+  <div id="login-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center">
+    <div class="bg-slate-800 border border-slate-700 p-8 rounded-xl w-96 shadow-2xl">
+      <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+        <i class="fa-solid fa-lock text-blue-500"></i> 管理員登入
+      </h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">電子郵件</label>
+          <input type="email" id="login-email" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="admin@example.com">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">密碼</label>
+          <input type="password" id="login-password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+        </div>
+        <div id="login-error" class="text-rose-500 text-xs hidden"></div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button onclick="toggleAuthModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm">取消</button>
+          <button onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">登入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 機台編輯 Modal -->
+  <div id="edit-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center">
+    <div class="bg-slate-800 border border-slate-700 p-8 rounded-xl w-[450px] shadow-2xl">
+      <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+        <i class="fa-solid fa-gear text-indigo-400"></i> 編輯機台資訊
+      </h2>
+      <input type="hidden" id="edit-machine-id">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">機台名稱 / 編號</label>
+          <input type="text" id="edit-name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">專屬客戶名稱</label>
+          <input type="text" id="edit-customer" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="例如：Varian / Applied / 市場件">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">機台專屬圖片網址 (URL)</label>
+          <input type="text" id="edit-img-url" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="https://example.com/machine.jpg">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">下方備註說明</label>
+          <textarea id="edit-note" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="輸入維護狀態或交期備註..."></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">狀態顏色標示</label>
+          <select id="edit-status-color" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <option value="bg-emerald-600">綠色 (運作中)</option>
+            <option value="bg-amber-600">黃色 (待機/維護)</option>
+            <option value="bg-rose-600">紅色 (異常/停機)</option>
+          </select>
+        </div>
+        <div class="flex justify-between pt-2">
+          <button onclick="deleteCurrentMachine()" class="bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white px-4 py-2 rounded-lg text-sm transition">刪除機台</button>
+          <div class="space-x-2">
+            <button onclick="closeEditModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm">取消</button>
+            <button onclick="saveMachineChanges()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">儲存變更</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (Compat 版本) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+    // ==========================================
+    // 1. Firebase 專案設定 (請替換為您的專案設定)
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "您的API_KEY",
+      authDomain: "您的專案.firebaseapp.com",
+      databaseURL: "https://您的專案-default-rtdb.firebaseio.com",
+      projectId: "您的專案ID",
+      storageBucket: "您的專案.appspot.com",
+      messagingSenderId: "您的SenderID",
+      appId: "您的AppID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // 預設資料結構
+    let appState = {
+      bgImage: "",
+      machines: [
+        { id: "m_1", name: "CM77 (銑床)", customer: "Varian", imgUrl: "", note: "運行正常 / 刀具檢查OK", statusColor: "bg-emerald-600" },
+        { id: "m_2", name: "CM76 (銑床)", customer: "Applied", imgUrl: "", note: "待命保養中", statusColor: "bg-amber-600" },
+        { id: "m_3", name: "AM05 (銑床)", customer: "市場件", imgUrl: "", note: "急單趕工中", statusColor: "bg-emerald-600" }
+      ]
+    };
+
+    let isEditor = false;
+
+    // ==========================================
+    // 2. 認證與權限控制
+    // ==========================================
+    auth.onAuthStateChanged(user => {
+      const statusEl = document.getElementById('user-status');
+      const authBtn = document.getElementById('auth-toggle-btn');
+      const adminToolbar = document.getElementById('admin-toolbar');
+
+      if (user) {
+        isEditor = true;
+        statusEl.className = "text-xs px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 border border-emerald-700";
+        statusEl.textContent = `● 已登入管理員: ${user.email}`;
+        authBtn.textContent = "登出";
+        authBtn.className = "bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition";
+        adminToolbar.classList.remove('hidden');
+      } else {
+        isEditor = false;
+        statusEl.className = "text-xs px-3 py-1 rounded-full bg-slate-700 text-slate-400";
+        statusEl.textContent = "● 唯讀模式 (未登入)";
+        authBtn.textContent = "管理員登入";
+        authBtn.className = "bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition";
+        adminToolbar.classList.add('hidden');
+      }
+      renderApp();
+    });
+
+    function toggleAuthModal() {
+      if (isEditor) {
+        auth.signOut().then(() => alert("已成功登出"));
+      } else {
+        document.getElementById('login-modal').classList.remove('hidden');
+      }
+    }
+
+    function closeLoginModal() {
+      document.getElementById('login-modal').classList.add('hidden');
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('login-email').value;
+      const pass = document.getElementById('login-password').value;
+      const errEl = document.getElementById('login-error');
+
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+          closeLoginModal();
+          alert("登入成功！");
+        })
+        .catch(err => {
+          errEl.textContent = "登入失敗：" + err.message;
+          errEl.classList.remove('hidden');
+        });
+    }
+
+    // ==========================================
+    // 3. 資料同步與即時載入 (Firebase Realtime DB)
+    // ==========================================
+    const stateRef = db.ref('factory_layout_state');
+
+    function syncToFirebase() {
+      if (!isEditor) return;
+      stateRef.set(appState).catch(err => console.error("同步失敗:", err));
+    }
+
+    // 監聽雲端資料變動
+    stateRef.on('value', snapshot => {
+      const val = snapshot.val();
+      if (val) {
+        appState = val;
+        renderApp();
+      }
+    });
+
+    // ==========================================
+    // 4. 畫面渲染與互動功能
+    // ==========================================
+    function renderApp() {
+      // 渲染背景底圖
+      const bgLayer = document.getElementById('factory-bg-layer');
+      if (appState.bgImage) {
+        bgLayer.style.backgroundImage = `url('${appState.bgImage}')`;
+      }
+
+      // 渲染機台卡片清單
+      const grid = document.getElementById('machine-grid');
+      grid.innerHTML = "";
+
+      appState.machines.forEach(m => {
+        const card = document.createElement('div');
+        card.className = `bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col space-y-3 transition hover:border-blue-500 ${isEditor ? 'cursor-pointer' : ''}`;
+        
+        if (isEditor) {
+          card.onclick = () => openEditModal(m.id);
+        }
+
+        // 圖片處理 (若無自訂圖片則顯示預設圖示)
+        let imgHtml = `<div class="w-full h-32 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500"><i class="fa-solid fa-microchip text-3xl"></i></div>`;
+        if (m.imgUrl && m.imgUrl.trim() !== "") {
+          imgHtml = `<div class="w-full h-32 bg-slate-800 rounded-lg overflow-hidden"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-xs\'>圖片載入失敗</div>'"></div>`;
+        }
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-white text-base">${m.name}</span>
+            <span class="text-xs px-2.5 py-1 rounded font-medium text-white ${m.statusColor || 'bg-emerald-600'}">${m.customer || '未指定客戶'}</span>
+          </div>
+          ${imgHtml}
+          <div class="text-xs bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60 text-slate-300">
+            <span class="text-slate-400 block mb-1 font-semibold"><i class="fa-solid fa-note-sticky mr-1"></i>備註：</span>
+            ${m.note || '無備註資料'}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // ==========================================
+    // 5. 匯入/匯出與編輯功能
+    // ==========================================
+    function handleBgImageUpload(event) {
+      if (!isEditor) return alert("請先登入管理員帳號！");
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        appState.bgImage = e.target.result;
+        syncToFirebase();
+        renderApp();
+        alert("廠區底圖上傳成功！");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function exportLayoutPNG() {
+      const container = document.getElementById('factory-canvas-container');
+      html2canvas(container, { useCORS: true, backgroundColor: '#020617' }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `廠區配置圖_${new Date().toISOString().slice(0,10)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+
+    function addNewMachine() {
+      if (!isEditor) return;
+      const newId = `m_${Date.now()}`;
+      appState.machines.push({
+        id: newId,
+        name: "新機台代號",
+        customer: "指定客戶",
+        imgUrl: "",
+        note: "請點擊編輯備註",
+        statusColor: "bg-emerald-600"
+      });
+      syncToFirebase();
+      renderApp();
+    }
+
+    function openEditModal(machineId) {
+      if (!isEditor) return;
+      const machine = appState.machines.find(m => m.id === machineId);
+      if (!machine) return;
+
+      document.getElementById('edit-machine-id').value = machine.id;
+      document.getElementById('edit-name').value = machine.name;
+      document.getElementById('edit-customer').value = machine.customer || "";
+      document.getElementById('edit-img-url').value = machine.imgUrl || "";
+      document.getElementById('edit-note').value = machine.note || "";
+      document.getElementById('edit-status-color').value = machine.statusColor || "bg-emerald-600";
+
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.add('hidden');
+    }
+
+    function saveMachineChanges() {
+      if (!isEditor) return;
+      const id = document.getElementById('edit-machine-id').value;
+      const machine = appState.machines.find(m => m.id === id);
+      if (machine) {
+        machine.name = document.getElementById('edit-name').value;
+        machine.customer = document.getElementById('edit-customer').value;
+        machine.imgUrl = document.getElementById('edit-img-url').value;
+        machine.note = document.getElementById('edit-note-value') ? document.getElementById('edit-note-value').value : document.getElementById('edit-note').value;
+        machine.statusColor = document.getElementById('edit-status-color').value;
+
+        syncToFirebase();
+        renderApp();
+        closeEditModal();
+      }
+    }
+
+    function deleteCurrentMachine() {
+      if (!isEditor) return;
+      if (confirm("確定要刪除這個機台嗎？")) {
+        const id = document.getElementById('edit-machine-id').value;
+        appState.machines = appState.machines.filter(m => m.id !== id);
+        syncToFirebase();
+        renderApp();
+        closeEditModal();
+      }
+    }
+  </script>
+</body>
+</html>
