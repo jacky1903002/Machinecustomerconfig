@@ -169,10 +169,6 @@
           <input type="text" id="edit-img-url" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="https://example.com/machine.jpg">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">下方備註說明</label>
-          <textarea id="edit-note" rows="2" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="輸入維護或交期備註..."></textarea>
-        </div>
-        <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">運作狀態燈號</label>
           <select id="edit-status-color" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500">
             <option value="bg-emerald-600">綠色 (運作中)</option>
@@ -224,8 +220,8 @@
           name: "自動化區",
           bgImage: "",
           machines: [
-            { id: "m_1", name: "CM77 (銑床)", imgUrl: "", note: "運作正常", statusColor: "bg-emerald-600", x: 30, y: 30 },
-            { id: "m_2", name: "CM76 (銑床)", imgUrl: "", note: "待命保養", statusColor: "bg-amber-500", x: 190, y: 30 }
+            { id: "m_1", name: "CM77 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
+            { id: "m_2", name: "CM76 (銑床)", imgUrl: "", statusColor: "bg-amber-500", x: 190, y: 30 }
           ]
         },
         {
@@ -233,7 +229,7 @@
           name: "永進區",
           bgImage: "",
           machines: [
-            { id: "m_3", name: "AM05 (銑床)", imgUrl: "", note: "急單趕工", statusColor: "bg-emerald-600", x: 30, y: 30 }
+            { id: "m_3", name: "AM05 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
           ]
         }
       ]
@@ -376,7 +372,6 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        // 【已將高度縮減為原本的 1/3：內距縮小、移除大圖片佔位，改為簡潔緊湊的設計】
         card.className = `machine-card bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm flex flex-col space-y-1 transition-shadow hover:shadow-md`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
@@ -385,14 +380,18 @@
         if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
         if (m.statusColor === "bg-rose-600") statusText = "異常/停機";
 
+        // 中間顯示圖片區塊
+        let imgHtml = `<div class="w-full h-7 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
+        if (m.imgUrl && m.imgUrl.trim() !== "") {
+          imgHtml = `<div class="w-full h-7 bg-slate-50 rounded overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[8px]\'>失效</div>'"></div>`;
+        }
+
         card.innerHTML = `
           <div class="flex justify-between items-center">
             <span class="font-bold text-slate-900 text-[10px] tracking-tight truncate max-w-[85px]">${m.name}</span>
             <span class="text-[8px] px-1 py-0.2 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
           </div>
-          <div class="text-[9px] bg-slate-50 px-1 py-0.5 rounded border border-slate-200 text-slate-500 truncate">
-            ${m.note || '無備註'}
-          </div>
+          ${imgHtml}
         `;
 
         if (isEditor) {
@@ -559,9 +558,9 @@
       appState.sheets.forEach(sheet => {
         const rows = sheet.machines.map(m => ({
           "機台編號": m.name, "圖片網址": m.imgUrl,
-          "備註說明": m.note, "狀態顏色": m.statusColor, "X座標": m.x, "Y座標": m.y
+          "狀態顏色": m.statusColor, "X座標": m.x, "Y座標": m.y
         }));
-        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ "機台編號": "", "圖片網址": "", "備註說明": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }]);
+        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ "機台編號": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }]);
         XLSX.utils.book_append_sheet(workbook, ws, sheet.name);
       });
       XLSX.writeFile(workbook, `多工作表廠區配置_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -586,7 +585,6 @@
                 id: `m_${sIdx}_${mIdx}_${Date.now()}`,
                 name: row["機台編號"] || `機台_${mIdx + 1}`,
                 imgUrl: row["圖片網址"] || "",
-                note: row["備註說明"] || "運作正常",
                 statusColor: row["狀態顏色"] || "bg-emerald-600",
                 x: Number(row["X座標"]) || (30 + (mIdx % 6) * 160),
                 y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 6) * 100)
@@ -634,7 +632,6 @@
         id: `m_${Date.now()}`, 
         name: "新機台", 
         imgUrl: "", 
-        note: "運作正常", 
         statusColor: "bg-emerald-600", 
         x: 30, 
         y: 30
@@ -650,7 +647,6 @@
       document.getElementById('edit-machine-id').value = m.id;
       document.getElementById('edit-name').value = m.name;
       document.getElementById('edit-img-url').value = m.imgUrl || "";
-      document.getElementById('edit-note').value = m.note || "運作正常";
       document.getElementById('edit-status-color').value = m.statusColor || "bg-emerald-600";
       document.getElementById('edit-modal').classList.remove('hidden');
     }
@@ -663,7 +659,6 @@
       if (m) {
         m.name = document.getElementById('edit-name').value;
         m.imgUrl = document.getElementById('edit-img-url').value;
-        m.note = document.getElementById('edit-note').value;
         m.statusColor = document.getElementById('edit-status-color').value;
         syncToFirebase();
         renderApp();
@@ -682,7 +677,6 @@
         id: `m_${Date.now()}`,
         name: target.name + " (複製)",
         imgUrl: target.imgUrl,
-        note: target.note,
         statusColor: target.statusColor,
         x: (target.x || 30) + 30,
         y: (target.y || 30) + 30
