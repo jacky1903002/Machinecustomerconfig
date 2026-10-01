@@ -461,11 +461,32 @@
       }
     }
 
-    // 拖曳限制在畫布隱藏格線內部，不跑版
+    // 拖曳機台，並支援自動對齊相鄰機台
     function initDragAndDrop(card, machineData) {
       let startX, startY, initialX, initialY;
+      
+      // 建立對齊輔助線元素（如果還沒有的話）
+      let guideLineX = document.getElementById('snap-guideline-x');
+      let guideLineY = document.getElementById('snap-guideline-y');
+      if (!guideLineX) {
+        guideLineX = document.createElement('div');
+        guideLineX.id = 'snap-guideline-x';
+        guideLineX.style.cssText = 'position:absolute; top:0; bottom:0; width:1px; background:red; z-index:999; display:none; pointer-events:none;';
+        document.getElementById('factory-canvas-container').appendChild(guideLineX);
+      }
+      if (!guideLineY) {
+        guideLineY = document.createElement('div');
+        guideLineY.id = 'snap-guideline-y';
+        guideLineY.style.cssText = 'position:absolute; left:0; right:0; height:1px; background:red; z-index:999; display:none; pointer-events:none;';
+        document.getElementById('factory-canvas-container').appendChild(guideLineY);
+      }
+
       card.onpointerdown = (e) => {
-        if (!isEditor) return;
+        if (!isEditor) {
+          alert("請先點擊右上角「管理員登入」後才能移動機台！");
+          return;
+        }
+
         startX = e.clientX; startY = e.clientY;
         initialX = machineData.x || 30; initialY = machineData.y || 30;
         card.classList.add('dragging', 'is-dragging');
@@ -476,11 +497,99 @@
           let newY = initialY + (ev.clientY - startY);
           
           const container = document.getElementById('factory-canvas-container');
-          const maxX = Math.max(0, container.clientWidth - 150);
-          const maxY = Math.max(0, container.clientHeight - 150);
+          const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
+          const maxY = Math.max(0, container.clientHeight - card.offsetHeight);
 
           newX = Math.max(10, Math.min(newX, maxX));
           newY = Math.max(10, Math.min(newY, maxY));
+
+          // --- 自動對齊（磁吸）邏輯 ---
+          const SNAP_THRESHOLD = 10; // 容許對齊的像素距離
+          let snapX = null;
+          let snapY = null;
+
+          // 取得畫布上所有其他機台卡片
+          const allCards = container.querySelectorAll('.machine-card');
+          
+          allCards.forEach(otherCard => {
+            if (otherCard === card) return; // 排除自己
+            
+            const oLeft = otherCard.offsetLeft;
+            const oTop = otherCard.offsetTop;
+            const oWidth = otherCard.offsetWidth;
+            const oHeight = otherCard.offsetHeight;
+            const oRight = oLeft + oWidth;
+            const oBottom = oTop + oHeight;
+            const oCenterX = oLeft + oWidth / 2;
+            const oCenterY = oTop + oHeight / 2;
+
+            const cWidth = card.offsetWidth;
+            const cHeight = card.offsetHeight;
+            const cRight = newX + cWidth;
+            const cBottom = newY + cHeight;
+            const cCenterX = newX + cWidth / 2;
+            const cCenterY = newY + cHeight / 2;
+
+            // X 軸對齊檢查（左對左、右對右、中心對中心、左對右、右對左）
+            const xTargets = [
+              { val: oLeft, targetNew: oLeft },                    // 左對左
+              { val: oRight, targetNew: oRight - cWidth },         // 右對右
+              { val: oCenterX, targetNew: oCenterX - cWidth / 2 },   // 中心對中心
+              { val: oRight, targetNew: oRight },                    // 左對相鄰右
+              { val: oLeft, targetNew: oLeft - cWidth }            // 右對相鄰左
+            ];
+
+            xTargets.forEach(t => {
+              // 檢查當前機台的各個邊界或中心是否靠近目標
+              [newX, cRight, cCenterX].forEach(currPos => {
+                if (Math.abs(currPos - t.val) < SNAP_THRESHOLD) {
+                  // 計算微調後的 newX
+                  let diff = t.val - currPos;
+                  // 簡單起見，直接對齊目標位置
+                  if (Math.abs(newX - t.targetNew) < SNAP_THRESHOLD * 2) {
+                    newX = t.targetNew;
+                    snapX = t.val;
+                  }
+                }
+              });
+            });
+
+            // Y 軸對齊檢查（頂對頂、底對底、中心對中心等）
+            const yTargets = [
+              { val: oTop, targetNew: oTop },                      // 頂對頂
+              { val: oBottom, targetNew: oBottom - cHeight },      // 底對底
+              { val: oCenterY, targetNew: oCenterY - cHeight / 2 },// 中心對中心
+              { val: oBottom, targetNew: oBottom },                  // 頂對相鄰底
+              { val: oTop, targetNew: oTop - cHeight }             // 底對相鄰頂
+            ];
+
+            yTargets.forEach(t => {
+              [newY, cBottom, cCenterY].forEach(currPos => {
+                if (Math.abs(currPos - t.val) < SNAP_THRESHOLD) {
+                  if (Math.abs(newY - t.targetNew) < SNAP_THRESHOLD * 2) {
+                    newY = t.targetNew;
+                    snapY = t.val;
+                  }
+                }
+              });
+            });
+          });
+
+          // 處理輔助線顯示
+          if (snapX !== null) {
+            guideLineX.style.left = `${snapX}px`;
+            guideLineX.style.display = 'block';
+          } else {
+            guideLineX.style.display = 'none';
+          }
+
+          if (snapY !== null) {
+            guideLineY.style.top = `${snapY}px`;
+            guideLineY.style.display = 'block';
+          } else {
+            guideLineY.style.display = 'none';
+          }
+          // --------------------------
 
           machineData.x = newX; 
           machineData.y = newY;
@@ -489,6 +598,10 @@
         };
 
         card.onpointerup = (ev) => {
+          // 隱藏輔助線
+          if (guideLineX) guideLineX.style.display = 'none';
+          if (guideLineY) guideLineY.style.display = 'none';
+
           card.releasePointerCapture(ev.pointerId);
           card.onpointermove = null; card.onpointerup = null;
           card.classList.remove('dragging');
@@ -497,7 +610,6 @@
         };
       };
     }
-
     // Excel 匯入/匯出
     function exportToExcel() {
       const workbook = XLSX.utils.book_new();
