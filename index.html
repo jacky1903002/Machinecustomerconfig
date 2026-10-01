@@ -88,7 +88,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯資訊；按住並拖曳卡片即可移動位置並自動磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製資訊；按住並拖曳卡片即可移動位置並自動磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-2xs transition flex items-center gap-1">
@@ -175,8 +175,11 @@
             <option value="bg-rose-600">紅色 (異常/停機)</option>
           </select>
         </div>
-        <div class="flex justify-between pt-4">
-          <button onclick="deleteCurrentMachine()" class="bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition">刪除此機台</button>
+        <div class="flex justify-between pt-4 border-t border-slate-100">
+          <div class="space-x-2">
+            <button onclick="deleteCurrentMachine()" class="bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-3 py-2 rounded-lg text-xs font-semibold transition">刪除此機台</button>
+            <button onclick="duplicateCurrentMachine()" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 px-3 py-2 rounded-lg text-xs font-semibold transition">複製此機台</button>
+          </div>
           <div class="space-x-2">
             <button onclick="closeEditModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold">取消</button>
             <button onclick="saveMachineChanges()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm">儲存變更</button>
@@ -394,7 +397,6 @@
           imgHtml = `<div class="w-full h-14 bg-slate-100 rounded-md overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[10px]\'>網址失效</div>'"></div>`;
         }
 
-        // 根據狀態燈號顯示對應文字標籤
         let statusText = "運作中";
         if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
         if (m.statusColor === "bg-rose-600") statusText = "異常/停機";
@@ -651,7 +653,7 @@
                 id: `m_${sIdx}_${mIdx}_${Date.now()}`,
                 name: row["機台編號"] || `機台_${mIdx + 1}`,
                 imgUrl: row["圖片網址"] || "",
-                note: row["備註說明"] || "",
+                note: row["備註說明"] || "運作正常",
                 statusColor: row["狀態顏色"] || "bg-emerald-600",
                 x: Number(row["X座標"]) || (30 + (mIdx % 6) * 160),
                 y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 6) * 160)
@@ -699,7 +701,7 @@
         id: `m_${Date.now()}`, 
         name: "新機台", 
         imgUrl: "", 
-        note: "備註說明", 
+        note: "運作正常", 
         statusColor: "bg-emerald-600", 
         x: 30, 
         y: 30
@@ -715,7 +717,7 @@
       document.getElementById('edit-machine-id').value = m.id;
       document.getElementById('edit-name').value = m.name;
       document.getElementById('edit-img-url').value = m.imgUrl || "";
-      document.getElementById('edit-note').value = m.note || "";
+      document.getElementById('edit-note').value = m.note || "運作正常";
       document.getElementById('edit-status-color').value = m.statusColor || "bg-emerald-600";
       document.getElementById('edit-modal').classList.remove('hidden');
     }
@@ -734,6 +736,29 @@
         renderApp();
         closeEditModal();
       }
+    }
+
+    function duplicateCurrentMachine() {
+      if (!isEditor) return;
+      const currentSheet = getCurrentSheet();
+      const id = document.getElementById('edit-machine-id').value;
+      const target = currentSheet.machines.find(item => item.id === id);
+      if (!target) return;
+
+      const newMachine = {
+        id: `m_${Date.now()}`,
+        name: target.name + " (複製)",
+        imgUrl: target.imgUrl,
+        note: target.note,
+        statusColor: target.statusColor,
+        x: (target.x || 30) + 30,
+        y: (target.y || 30) + 30
+      };
+
+      currentSheet.machines.push(newMachine);
+      syncToFirebase();
+      renderApp();
+      closeEditModal();
     }
 
     function deleteCurrentMachine() {
