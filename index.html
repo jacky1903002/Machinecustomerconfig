@@ -604,25 +604,34 @@
       }
     }
 
-    function toggleStatsModal() {
+function toggleStatsModal() {
       const modal = document.getElementById('stats-modal');
       const content = document.getElementById('stats-content');
       if (modal.classList.contains('hidden')) {
-        // 計算統計數據
         let totalMachines = 0;
         let deptStats = {};
-        let categoryStats = {};
+        let materialCategoryStats = {}; // 以材質分組的類別統計
 
         appState.sheets.forEach(sheet => {
           const deptName = sheet.department || sheet.name;
           const count = sheet.machines ? sheet.machines.length : 0;
-          deptStats[deptName] = count;
+          deptStats[deptName] = (deptStats[deptName] || 0) + count;
           totalMachines += count;
+
+          // 取得當前工作表的材質，若未設定則歸類為「未設定材質」
+          const matName = sheet.material && sheet.material.trim() !== "" ? sheet.material.trim() : "未設定材質";
+          if (!materialCategoryStats[matName]) {
+            materialCategoryStats[matName] = {
+              total: 0,
+              categories: {}
+            };
+          }
 
           if (sheet.machines) {
             sheet.machines.forEach(m => {
+              materialCategoryStats[matName].total += 1;
               const cat = m.category && m.category.trim() !== "" ? m.category.trim() : "未分類";
-              categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+              materialCategoryStats[matName].categories[cat] = (materialCategoryStats[matName].categories[cat] || 0) + 1;
             });
           }
         });
@@ -657,22 +666,39 @@
             </div>
           </div>
 
-          <div>
-            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">類別統計</h3>
-            <div class="grid grid-cols-2 gap-2">
+          <div class="space-y-4">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">依材質展開之類別統計</h3>
         `;
 
-        for (let cat in categoryStats) {
+        for (let mat in materialCategoryStats) {
+          const matData = materialCategoryStats[mat];
           html += `
-            <div class="flex justify-between items-center bg-amber-50/60 px-3 py-2 rounded-lg border border-amber-200/60 text-xs">
-              <span class="font-medium text-slate-700">${cat}</span>
-              <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">${categoryStats[cat]} 台</span>
+            <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
+              <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                  <i class="fa-solid fa-layer-group text-indigo-600"></i> 材質：${mat}
+                </span>
+                <span class="bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full text-xs font-bold">總計 ${matData.total} 台</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+          `;
+
+          for (let cat in matData.categories) {
+            html += `
+              <div class="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-200/80 text-xs shadow-sm">
+                <span class="font-medium text-slate-700">${cat}</span>
+                <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">${matData.categories[cat]} 台</span>
+              </div>
+            `;
+          }
+
+          html += `
+              </div>
             </div>
           `;
         }
 
         html += `
-            </div>
           </div>
         `;
 
