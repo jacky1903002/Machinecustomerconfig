@@ -19,7 +19,7 @@
       user-select: none;
       touch-action: none;
       transition: box-shadow 0.2s ease;
-      width: 160px; /* 稍微加大格子寬度 */
+      width: 140px;
       cursor: pointer;
     }
     .machine-card.dragging {
@@ -88,7 +88,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊頁籤可重新命名；點擊機台卡片可編輯課別、位置與材質等資訊；拖曳時支援智慧磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊頁籤可重新命名；點擊機台卡片即可編輯或複製；拖曳時支援智慧磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
@@ -99,19 +99,38 @@
 
   <!-- 主畫布區域 -->
   <main class="flex-1 p-6 max-w-[1700px] mx-auto w-full">
-    <div class="flex justify-between items-center mb-3 px-2">
-      <div class="flex items-center space-x-2">
-        <h2 id="current-zone-title" class="text-xl font-bold text-slate-800">廠區配置預覽</h2>
-        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-sm">
-          <i class="fa-solid fa-pen-to-square text-blue-600"></i> 編輯廠區名稱
+    <!-- 標題區域改為：課別（加大）、區域、材質 三個欄位 -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-4 flex-wrap">
+        <!-- 課別欄位（特別加大寬度與視覺強調） -->
+        <div class="flex items-center space-x-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl">
+          <span class="text-xs font-bold text-blue-800"><i class="fa-solid fa-building-user mr-1"></i> 課別:</span>
+          <span id="header-department" class="text-sm font-extrabold text-blue-900">載入中...</span>
+        </div>
+        
+        <!-- 區域欄位 -->
+        <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+          <span class="text-xs font-semibold text-slate-600"><i class="fa-solid fa-map-location-dot mr-1"></i> 區域:</span>
+          <span id="header-zone" class="text-xs font-bold text-slate-800">載入中...</span>
+        </div>
+
+        <!-- 材質欄位 -->
+        <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+          <span class="text-xs font-semibold text-slate-600"><i class="fa-solid fa-layer-group mr-1"></i> 材質:</span>
+          <span id="header-material" class="text-xs font-bold text-slate-800">載入中...</span>
+        </div>
+
+        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-sm">
+          <i class="fa-solid fa-pen-to-square text-blue-600"></i> 編輯標題資訊
         </button>
       </div>
+
       <div class="text-xs text-slate-400">
         <span><i class="fa-solid fa-magnet text-indigo-500 mr-1"></i>具備智慧磁吸對齊功能</span>
       </div>
     </div>
 
-    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[730px]">
+    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[700px]">
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
@@ -149,12 +168,12 @@
     </div>
   </div>
 
-  <!-- 機台編輯 Modal (新增課別、位置、材質) -->
+  <!-- 機台編輯 Modal -->
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[480px] shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <i class="fa-solid fa-gear text-blue-600"></i> 編輯機台資訊 (課別 / 位置 / 材質)
+          <i class="fa-solid fa-gear text-blue-600"></i> 編輯機台資訊
         </h2>
         <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
@@ -163,20 +182,6 @@
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台名稱 / 編號</label>
           <input type="text" id="edit-name" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500">
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">課別</label>
-            <input type="text" id="edit-department" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例: 金屬一課">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">位置</label>
-            <input type="text" id="edit-location" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例: A區-01">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">材質</label>
-          <input type="text" id="edit-material" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例: 不鏽鋼 / 鋁合金">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台專屬圖片網址 (URL)</label>
@@ -232,18 +237,24 @@
         {
           id: "sheet_auto",
           name: "金屬一課",
+          department: "金屬一課",
+          zone: "A區",
+          material: "不鏽鋼 / 鋁合金",
           bgImage: "",
           machines: [
-            { id: "m_1", name: "CM77 (銑床)", department: "金屬一課", location: "A-01", material: "不鏽鋼", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
-            { id: "m_2", name: "CM76 (銑床)", department: "金屬一課", location: "A-02", material: "鋁合金", imgUrl: "", statusColor: "bg-amber-500", x: 210, y: 30 }
+            { id: "m_1", name: "CM77 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
+            { id: "m_2", name: "CM76 (銑床)", imgUrl: "", statusColor: "bg-amber-500", x: 190, y: 30 }
           ]
         },
         {
           id: "sheet_yong",
           name: "永進區",
+          department: "永進課",
+          zone: "B區",
+          material: "碳鋼",
           bgImage: "",
           machines: [
-            { id: "m_3", name: "AM05 (銑床)", department: "永進課", location: "B-01", material: "碳鋼", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
+            { id: "m_3", name: "AM05 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
           ]
         }
       ]
@@ -296,7 +307,7 @@
         });
     }
 
-    const stateRef = db.ref('factory_layout_commercial_v11');
+    const stateRef = db.ref('factory_layout_commercial_v12');
 
     function syncToFirebase() {
       if (!isEditor) return;
@@ -376,7 +387,10 @@
       const currentSheet = getCurrentSheet();
       if (!currentSheet) return;
 
-      document.getElementById('current-zone-title').textContent = currentSheet.name;
+      // 更新頂部標題的三個欄位內容
+      document.getElementById('header-department').textContent = currentSheet.department || currentSheet.name;
+      document.getElementById('header-zone').textContent = currentSheet.zone || '未設定';
+      document.getElementById('header-material').textContent = currentSheet.material || '未設定';
 
       const bgLayer = document.getElementById('factory-bg-layer');
       bgLayer.style.backgroundImage = currentSheet.bgImage ? `url('${currentSheet.bgImage}')` : 'none';
@@ -386,7 +400,7 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2 shadow-sm flex flex-col space-y-1.5 transition-shadow hover:shadow-md`;
+        card.className = `machine-card bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm flex flex-col space-y-1 transition-shadow hover:shadow-md`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
@@ -394,20 +408,15 @@
         if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
         if (m.statusColor === "bg-rose-600") statusText = "異常/停機";
 
-        let imgHtml = `<div class="w-full h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-xs"></i></div>`;
+        let imgHtml = `<div class="w-full h-7 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
-          imgHtml = `<div class="w-full h-10 bg-slate-50 rounded-lg overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[9px]\'>失效</div>'"></div>`;
+          imgHtml = `<div class="w-full h-7 bg-slate-50 rounded overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[8px]\'>失效</div>'"></div>`;
         }
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[100px]">${m.name}</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
-          </div>
-          <div class="text-[10px] text-slate-500 space-y-0.5 font-medium">
-            <div>課別: <span class="text-slate-700">${m.department || '未設定'}</span></div>
-            <div>位置: <span class="text-slate-700">${m.location || '未設定'}</span></div>
-            <div>材質: <span class="text-slate-700">${m.material || '未設定'}</span></div>
+            <span class="font-bold text-slate-900 text-[10px] tracking-tight truncate max-w-[85px]">${m.name}</span>
+            <span class="text-[8px] px-1 py-0.2 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
           </div>
           ${imgHtml}
         `;
@@ -427,8 +436,7 @@
       appState.sheets.forEach(s => {
         const isActive = s.id === appState.activeSheetId;
         const tab = document.createElement('div');
-        // 仿造截圖中的圓角分區標籤風格
-        tab.className = `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+        tab.className = `flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}`;
         
         tab.innerHTML = `
           <i class="fa-solid fa-table-cells text-[11px]"></i>
@@ -454,6 +462,9 @@
       const newSheet = {
         id: `sheet_${Date.now()}`,
         name: sheetName.trim(),
+        department: sheetName.trim(),
+        zone: "預設區域",
+        material: "通用材質",
         bgImage: "",
         machines: []
       };
@@ -468,12 +479,21 @@
       if (!isEditor) return;
       const sheet = getCurrentSheet();
       if (!sheet) return;
-      const newName = prompt("修改當前廠區 / 工作表名稱：", sheet.name);
-      if (newName && newName.trim() !== "") {
-        sheet.name = newName.trim();
-        syncToFirebase();
-        renderApp();
-      }
+
+      const newDept = prompt("修改【課別】名稱：", sheet.department || sheet.name);
+      if (newDept === null) return;
+      const newZone = prompt("修改【區域】名稱：", sheet.zone || "");
+      if (newZone === null) return;
+      const newMat = prompt("修改【材質】名稱：", sheet.material || "");
+      if (newMat === null) return;
+
+      sheet.department = newDept.trim();
+      sheet.name = newDept.trim(); // 同步更新頁籤名稱
+      sheet.zone = newZone.trim();
+      sheet.material = newMat.trim();
+
+      syncToFirebase();
+      renderApp();
     }
 
     function deleteSheet(sheetId) {
@@ -616,17 +636,17 @@
           let rows = [];
           if (sheet.machines && sheet.machines.length > 0) {
             rows = sheet.machines.map(m => ({
+              "課別": sheet.department || sheet.name,
+              "區域": sheet.zone || "",
+              "材質": sheet.material || "",
               "機台編號": m.name || "",
-              "課別": m.department || "",
-              "位置": m.location || "",
-              "材質": m.material || "",
               "圖片網址": m.imgUrl || "",
               "狀態顏色": m.statusColor || "bg-emerald-600",
               "X座標": m.x || 0,
               "Y座標": m.y || 0
             }));
           } else {
-            rows = [{ "機台編號": "", "課別": "", "位置": "", "材質": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
+            rows = [{ "課別": sheet.department || sheet.name, "區域": sheet.zone || "", "材質": sheet.material || "", "機台編號": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
           }
 
           const ws = XLSX.utils.json_to_sheet(rows);
@@ -651,20 +671,21 @@
           const workbook = XLSX.read(data, { type: 'array' });
           appState.sheets = workbook.SheetNames.map((sheetName, sIdx) => {
             const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            let firstRow = rows[0] || {};
             return {
               id: `sheet_imp_${sIdx}_${Date.now()}`,
-              name: sheetName,
+              name: firstRow["課別"] || sheetName,
+              department: firstRow["課別"] || sheetName,
+              zone: firstRow["區域"] || "預設區域",
+              material: firstRow["材質"] || "通用材質",
               bgImage: "",
               machines: rows.map((row, mIdx) => ({
                 id: `m_${sIdx}_${mIdx}_${Date.now()}`,
                 name: row["機台編號"] || `機台_${mIdx + 1}`,
-                department: row["課別"] || sheetName,
-                location: row["位置"] || "",
-                material: row["材質"] || "",
                 imgUrl: row["圖片網址"] || "",
                 statusColor: row["狀態顏色"] || "bg-emerald-600",
-                x: Number(row["X座標"]) || (30 + (mIdx % 5) * 180),
-                y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 5) * 150)
+                x: Number(row["X座標"]) || (30 + (mIdx % 6) * 160),
+                y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 6) * 100)
               }))
             };
           });
@@ -708,9 +729,6 @@
       currentSheet.machines.push({
         id: `m_${Date.now()}`, 
         name: "新機台", 
-        department: currentSheet.name,
-        location: "",
-        material: "",
         imgUrl: "", 
         statusColor: "bg-emerald-600", 
         x: 30, 
@@ -726,9 +744,6 @@
       if (!m) return;
       document.getElementById('edit-machine-id').value = m.id;
       document.getElementById('edit-name').value = m.name;
-      document.getElementById('edit-department').value = m.department || "";
-      document.getElementById('edit-location').value = m.location || "";
-      document.getElementById('edit-material').value = m.material || "";
       document.getElementById('edit-img-url').value = m.imgUrl || "";
       document.getElementById('edit-status-color').value = m.statusColor || "bg-emerald-600";
       document.getElementById('edit-modal').classList.remove('hidden');
@@ -741,9 +756,6 @@
       const m = getCurrentSheet().machines.find(item => item.id === id);
       if (m) {
         m.name = document.getElementById('edit-name').value;
-        m.department = document.getElementById('edit-department').value;
-        m.location = document.getElementById('edit-location').value;
-        m.material = document.getElementById('edit-material').value;
         m.imgUrl = document.getElementById('edit-img-url').value;
         m.statusColor = document.getElementById('edit-status-color').value;
         syncToFirebase();
@@ -762,9 +774,6 @@
       const newMachine = {
         id: `m_${Date.now()}`,
         name: target.name + " (複製)",
-        department: target.department,
-        location: target.location,
-        material: target.material,
         imgUrl: target.imgUrl,
         statusColor: target.statusColor,
         x: (target.x || 30) + 30,
