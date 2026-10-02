@@ -93,7 +93,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」文字即可直接更改名稱；雙擊頁籤可重新命名分區。目前匯入 Excel 只會更新當前工作表。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」文字即可直接更改名稱；雙擊頁籤可重新命名分區。各分區頁籤已自動顯示機台總數。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
@@ -504,12 +504,14 @@
 
       appState.sheets.forEach(s => {
         const isActive = s.id === appState.activeSheetId;
+        const count = s.machines ? s.machines.length : 0;
         const tab = document.createElement('div');
         tab.className = `flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}`;
         
         tab.innerHTML = `
           <i class="fa-solid fa-table-cells text-[11px]"></i>
           <span>${s.name}</span>
+          <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}">${count}</span>
           ${(isEditor && appState.sheets.length > 1) ? `<i class="fa-solid fa-xmark ml-1.5 p-1 rounded hover:bg-black/10" onclick="event.stopPropagation(); deleteSheet('${s.id}')"></i>` : ''}
         `;
 
@@ -718,7 +720,6 @@
       }
     }
 
-    // 修正：匯入時只更新當前作用中的工作表，絕對不影響其他工作表（如第一個工作表）
     function importFromExcel(event) {
       if (!isEditor) return alert("請先登入管理員帳號！");
       const file = event.target.files[0];
@@ -730,16 +731,13 @@
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           
-          // 取得目前作用中的工作表
           const currentSheet = getCurrentSheet();
           if (!currentSheet) {
             alert("找不到當前工作表！");
             return;
           }
 
-          // 優先讀取 Excel 中第一個分頁的資料，或者與當前工作表同名的分頁資料
           let targetSheetName = workbook.SheetNames[0];
-          // 如果上傳的 Excel 包含和當前工作表同名的分頁，則優先採用該分頁
           if (workbook.SheetNames.includes(currentSheet.name)) {
             targetSheetName = currentSheet.name;
           }
@@ -748,7 +746,6 @@
           if (rows.length > 0) {
             let firstRow = rows[0] || {};
             
-            // 更新當前工作表的屬性
             if (firstRow["課別"]) {
               currentSheet.department = firstRow["課別"];
               currentSheet.name = firstRow["課別"];
@@ -756,7 +753,6 @@
             if (firstRow["區域"]) currentSheet.zone = firstRow["區域"];
             if (firstRow["材質"]) currentSheet.material = firstRow["材質"];
 
-            // 更新當前工作表的機台清單
             currentSheet.machines = rows.map((row, mIdx) => ({
               id: `m_imp_${Date.now()}_${mIdx}`,
               name: row["機台編號"] || `機台_${mIdx + 1}`,
