@@ -53,19 +53,24 @@
         <span id="last-update-time" class="text-slate-400 hidden md:inline">上次更新：尚無</span>
       </div>
 
+      <!-- 中英文切換按鈕 -->
+      <button onclick="toggleLanguage()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-language"></i> <span id="lang-btn-text">English</span>
+      </button>
+
       <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-        <i class="fa-solid fa-file-excel"></i> 匯出 Excel
+        <i class="fa-solid fa-file-excel"></i> <span class="i-text" data-zh="匯出 Excel" data-en="Export Excel">匯出 Excel</span>
       </button>
       <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
-        <i class="fa-solid fa-file-import"></i> 匯入 Excel
+        <i class="fa-solid fa-file-import"></i> <span class="i-text" data-zh="匯入 Excel" data-en="Import Excel">匯入 Excel</span>
         <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
       </label>
       <button onclick="exportLayoutPNG()" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-        <i class="fa-solid fa-camera"></i> 截圖匯出
+        <i class="fa-solid fa-camera"></i> <span class="i-text" data-zh="截圖匯出" data-en="Export PNG">截圖匯出</span>
       </button>
 
       <label class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
-        <i class="fa-solid fa-image"></i> 更換當前區底圖
+        <i class="fa-solid fa-image"></i> <span class="i-text" data-zh="更換當前區底圖" data-en="Change Bg">更換當前區底圖</span>
         <input type="file" id="bg-image-input" accept="image/*" class="hidden" onchange="handleBgImageUpload(event)">
       </label>
 
@@ -88,7 +93,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊頁籤可重新命名；點擊機台卡片即可編輯或複製；拖曳時支援智慧磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」文字即可直接更改名稱；雙擊頁籤可重新命名分區。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
@@ -99,30 +104,32 @@
 
   <!-- 主畫布區域 -->
   <main class="flex-1 p-6 max-w-[1700px] mx-auto w-full">
-    <!-- 標題區域改為：課別（加大）、區域、材質 三個欄位 -->
+    <!-- 標題區域：課別（加大）、區域、材質，支援雙擊直接修改 -->
     <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center space-x-4 flex-wrap">
-        <!-- 課別欄位（特別加大寬度與視覺強調） -->
+        <!-- 課別欄位（加大寬度與視覺強調） -->
         <div class="flex items-center space-x-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl">
-          <span class="text-xs font-bold text-blue-800"><i class="fa-solid fa-building-user mr-1"></i> 課別:</span>
-          <span id="header-department" class="text-sm font-extrabold text-blue-900">載入中...</span>
+          <span class="text-xs font-bold text-blue-800 flex items-center gap-1">
+            <i class="fa-solid fa-building-user"></i> <span class="lbl-dept">課別</span>:
+          </span>
+          <span id="header-department" ondblclick="editFieldDirectly('department')" title="雙擊可直接更改課別" class="text-sm font-extrabold text-blue-900 cursor-pointer hover:bg-blue-100/70 px-1.5 py-0.5 rounded transition">載入中...</span>
         </div>
         
         <!-- 區域欄位 -->
         <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
-          <span class="text-xs font-semibold text-slate-600"><i class="fa-solid fa-map-location-dot mr-1"></i> 區域:</span>
-          <span id="header-zone" class="text-xs font-bold text-slate-800">載入中...</span>
+          <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+            <i class="fa-solid fa-map-location-dot"></i> <span class="lbl-zone">區域</span>:
+          </span>
+          <span id="header-zone" ondblclick="editFieldDirectly('zone')" title="雙擊可直接更改區域" class="text-xs font-bold text-slate-800 cursor-pointer hover:bg-slate-200/70 px-1.5 py-0.5 rounded transition">載入中...</span>
         </div>
 
         <!-- 材質欄位 -->
         <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
-          <span class="text-xs font-semibold text-slate-600"><i class="fa-solid fa-layer-group mr-1"></i> 材質:</span>
-          <span id="header-material" class="text-xs font-bold text-slate-800">載入中...</span>
+          <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+            <i class="fa-solid fa-layer-group"></i> <span class="lbl-mat">材質</span>:
+          </span>
+          <span id="header-material" ondblclick="editFieldDirectly('material')" title="雙擊可直接更改材質" class="text-xs font-bold text-slate-800 cursor-pointer hover:bg-slate-200/70 px-1.5 py-0.5 rounded transition">載入中...</span>
         </div>
-
-        <button id="edit-zone-name-btn" onclick="renameCurrentSheet()" class="hidden bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-sm">
-          <i class="fa-solid fa-pen-to-square text-blue-600"></i> 編輯標題資訊
-        </button>
       </div>
 
       <div class="text-xs text-slate-400">
@@ -233,6 +240,7 @@
       activeSheetId: "sheet_auto",
       logoUrl: "",
       updatedAt: null,
+      lang: "zh", // 預設中文
       sheets: [
         {
           id: "sheet_auto",
@@ -266,7 +274,6 @@
       const authBtn = document.getElementById('auth-toggle-btn');
       const adminToolbar = document.getElementById('admin-toolbar');
       const sheetActionsToolbar = document.getElementById('sheet-actions-toolbar');
-      const editZoneBtn = document.getElementById('edit-zone-name-btn');
 
       if (user) {
         isEditor = true;
@@ -274,14 +281,12 @@
         authBtn.className = "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.remove('hidden');
         sheetActionsToolbar.classList.remove('hidden');
-        editZoneBtn.classList.remove('hidden');
       } else {
         isEditor = false;
         authBtn.textContent = "管理員登入";
         authBtn.className = "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition";
         adminToolbar.classList.add('hidden');
         sheetActionsToolbar.classList.add('hidden');
-        editZoneBtn.classList.add('hidden');
       }
       renderApp();
     });
@@ -307,7 +312,7 @@
         });
     }
 
-    const stateRef = db.ref('factory_layout_commercial_v12');
+    const stateRef = db.ref('factory_layout_commercial_v13');
 
     function syncToFirebase() {
       if (!isEditor) return;
@@ -333,6 +338,7 @@
         if (!appState.sheets.some(s => s.id === appState.activeSheetId) && appState.sheets.length > 0) {
           appState.activeSheetId = appState.sheets[0].id;
         }
+        if (!appState.lang) appState.lang = "zh";
       } else {
         syncToFirebase();
       }
@@ -348,6 +354,12 @@
       } else {
         timeEl.textContent = `上次更新：尚未同步`;
       }
+    }
+
+    function toggleLanguage() {
+      appState.lang = appState.lang === 'zh' ? 'en' : 'zh';
+      syncToFirebase();
+      renderApp();
     }
 
     function changeLogoUrl() {
@@ -384,6 +396,18 @@
       renderLogo();
       updateTimeDisplay();
 
+      // 更新中英文介面文字
+      const isEn = appState.lang === 'en';
+      document.getElementById('lang-btn-text').textContent = isEn ? '繁體中文' : 'English';
+
+      document.querySelectorAll('.lbl-dept').forEach(el => el.textContent = isEn ? 'Department' : '課別');
+      document.querySelectorAll('.lbl-zone').forEach(el => el.textContent = isEn ? 'Zone' : '區域');
+      document.querySelectorAll('.lbl-mat').forEach(el => el.textContent = isEn ? 'Material' : '材質');
+
+      document.querySelectorAll('.i-text').forEach(el => {
+        el.textContent = el.getAttribute(isEn ? 'data-en' : 'data-zh');
+      });
+
       const currentSheet = getCurrentSheet();
       if (!currentSheet) return;
 
@@ -404,9 +428,9 @@
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
-        let statusText = "運作中";
-        if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
-        if (m.statusColor === "bg-rose-600") statusText = "異常/停機";
+        let statusText = isEn ? "Running" : "運作中";
+        if (m.statusColor === "bg-amber-500") statusText = isEn ? "Standby" : "待機/維護";
+        if (m.statusColor === "bg-rose-600") statusText = isEn ? "Error" : "異常/停機";
 
         let imgHtml = `<div class="w-full h-7 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
@@ -429,6 +453,44 @@
       });
     }
 
+    // 雙擊直接更改欄位內容
+    function editFieldDirectly(fieldType) {
+      if (!isEditor) {
+        alert("請先點擊右上角「管理員登入」後才能修改！");
+        return;
+      }
+      const sheet = getCurrentSheet();
+      if (!sheet) return;
+
+      let currentVal = "";
+      let promptTitle = "";
+      if (fieldType === 'department') {
+        currentVal = sheet.department || sheet.name;
+        promptTitle = "請輸入新的課別名稱：";
+      } else if (fieldType === 'zone') {
+        currentVal = sheet.zone || "";
+        promptTitle = "請輸入新的區域名稱：";
+      } else if (fieldType === 'material') {
+        currentVal = sheet.material || "";
+        promptTitle = "請輸入新的材質名稱：";
+      }
+
+      const newVal = prompt(promptTitle, currentVal);
+      if (newVal === null) return; // 按取消
+
+      if (fieldType === 'department') {
+        sheet.department = newVal.trim();
+        sheet.name = newVal.trim(); // 同步更新頁籤名稱
+      } else if (fieldType === 'zone') {
+        sheet.zone = newVal.trim();
+      } else if (fieldType === 'material') {
+        sheet.material = newVal.trim();
+      }
+
+      syncToFirebase();
+      renderApp();
+    }
+
     function renderSheetsTabs() {
       const container = document.getElementById('sheets-tab-container');
       container.innerHTML = "";
@@ -444,7 +506,17 @@
           ${(isEditor && appState.sheets.length > 1) ? `<i class="fa-solid fa-xmark ml-1.5 p-1 rounded hover:bg-black/10" onclick="event.stopPropagation(); deleteSheet('${s.id}')"></i>` : ''}
         `;
 
-        tab.ondblclick = () => { if (isEditor) renameCurrentSheet(); };
+        tab.ondblclick = () => {
+          if (!isEditor) return;
+          const newName = prompt("請重新命名工作表 (分區)：", s.name);
+          if (newName) {
+            s.name = newName.trim();
+            s.department = newName.trim();
+            syncToFirebase();
+            renderApp();
+          }
+        };
+
         tab.onclick = () => {
           appState.activeSheetId = s.id;
           renderApp();
@@ -471,27 +543,6 @@
 
       appState.sheets.push(newSheet);
       appState.activeSheetId = newSheet.id;
-      syncToFirebase();
-      renderApp();
-    }
-
-    function renameCurrentSheet() {
-      if (!isEditor) return;
-      const sheet = getCurrentSheet();
-      if (!sheet) return;
-
-      const newDept = prompt("修改【課別】名稱：", sheet.department || sheet.name);
-      if (newDept === null) return;
-      const newZone = prompt("修改【區域】名稱：", sheet.zone || "");
-      if (newZone === null) return;
-      const newMat = prompt("修改【材質】名稱：", sheet.material || "");
-      if (newMat === null) return;
-
-      sheet.department = newDept.trim();
-      sheet.name = newDept.trim(); // 同步更新頁籤名稱
-      sheet.zone = newZone.trim();
-      sheet.material = newMat.trim();
-
       syncToFirebase();
       renderApp();
     }
