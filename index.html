@@ -19,7 +19,7 @@
       user-select: none;
       touch-action: none;
       transition: box-shadow 0.2s ease;
-      width: 140px;
+      width: 150px;
       cursor: pointer;
     }
     .machine-card.dragging {
@@ -74,6 +74,11 @@
         <input type="file" id="bg-image-input" accept="image/*" class="hidden" onchange="handleBgImageUpload(event)">
       </label>
 
+      <!-- 統計分析按鈕 -->
+      <button onclick="toggleStatsModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+        <i class="fa-solid fa-chart-pie"></i> <span>機台分析統計</span>
+      </button>
+
       <button id="auth-toggle-btn" onclick="toggleAuthModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">
         管理員登入
       </button>
@@ -93,7 +98,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」文字即可直接更改名稱；雙擊頁籤可重新命名分區。各分區頁籤已自動顯示機台總數。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」文字即可直接更改名稱；雙擊頁籤可重新命名分區。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
@@ -148,6 +153,24 @@
     </div>
   </main>
 
+  <!-- 統計分析 Modal -->
+  <div id="stats-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[600px] shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-amber-600"></i> 機台分析統計儀表板
+        </h2>
+        <button onclick="toggleStatsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div id="stats-content" class="space-y-6 text-sm">
+        <!-- 動態填入統計內容 -->
+      </div>
+      <div class="flex justify-end pt-6 border-t border-slate-100">
+        <button onclick="toggleStatsModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-semibold">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 登入 Modal -->
   <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-96 shadow-2xl">
@@ -175,9 +198,9 @@
     </div>
   </div>
 
-  <!-- 機台編輯 Modal -->
+  <!-- 機台編輯 Modal (含 廠牌型號、類別) -->
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[480px] shadow-2xl">
+    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[500px] shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
           <i class="fa-solid fa-gear text-blue-600"></i> 編輯機台資訊
@@ -189,6 +212,16 @@
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台名稱 / 編號</label>
           <input type="text" id="edit-name" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">廠牌型號</label>
+            <input type="text" id="edit-brand" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例如：永進 / 瀧澤">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">類別</label>
+            <input type="text" id="edit-category" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例如：銑床 / 車床 / 磨床">
+          </div>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台專屬圖片網址 (URL)</label>
@@ -250,8 +283,8 @@
           material: "不鏽鋼 / 鋁合金",
           bgImage: "",
           machines: [
-            { id: "m_1", name: "CM77 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
-            { id: "m_2", name: "CM76 (銑床)", imgUrl: "", statusColor: "bg-amber-500", x: 190, y: 30 }
+            { id: "m_1", name: "CM77", brand: "永進", category: "銑床", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
+            { id: "m_2", name: "CM76", brand: "瀧澤", category: "車床", imgUrl: "", statusColor: "bg-amber-500", x: 190, y: 30 }
           ]
         },
         {
@@ -262,7 +295,7 @@
           material: "碳鋼",
           bgImage: "",
           machines: [
-            { id: "m_3", name: "AM05 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
+            { id: "m_3", name: "AM05", brand: "永進", category: "銑床", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
           ]
         }
       ]
@@ -313,7 +346,7 @@
         });
     }
 
-    const stateRef = db.ref('factory_layout_commercial_v13');
+    const stateRef = db.ref('factory_layout_commercial_v14');
 
     function syncToFirebase() {
       if (!isEditor) return;
@@ -432,23 +465,27 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `machine-card bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm flex flex-col space-y-1 transition-shadow hover:shadow-md`;
+        card.className = `machine-card bg-white border border-slate-200 rounded-lg p-2 shadow-sm flex flex-col space-y-1.5 transition-shadow hover:shadow-md`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
         let statusText = isEn ? "Running" : "運作中";
-        if (m.statusColor === "bg-amber-500") statusText = isEn ? "Standby" : "待機/維護";
-        if (m.statusColor === "bg-rose-600") statusText = isEn ? "Error" : "異常/停機";
+        if (m.statusColor === "bg-amber-500") statusText = isEn ? "Standby" : "待機";
+        if (m.statusColor === "bg-rose-600") statusText = isEn ? "Error" : "異常";
 
-        let imgHtml = `<div class="w-full h-7 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
+        let imgHtml = `<div class="w-full h-8 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
-          imgHtml = `<div class="w-full h-7 bg-slate-50 rounded overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[8px]\'>失效</div>'"></div>`;
+          imgHtml = `<div class="w-full h-8 bg-slate-50 rounded overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[8px]\'>失效</div>'"></div>`;
         }
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-900 text-[10px] tracking-tight truncate max-w-[85px]">${m.name}</span>
-            <span class="text-[8px] px-1 py-0.2 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
+            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[90px]">${m.name}</span>
+            <span class="text-[8px] px-1.5 py-0.2 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
+          </div>
+          <div class="text-[9px] text-slate-500 flex justify-between">
+            <span class="truncate max-w-[70px]" title="廠牌型號">廠牌: ${m.brand || '未填'}</span>
+            <span class="truncate max-w-[65px]" title="類別">類別: ${m.category || '未填'}</span>
           </div>
           ${imgHtml}
         `;
@@ -564,6 +601,85 @@
         appState.activeSheetId = appState.sheets[0].id;
         syncToFirebase();
         renderApp();
+      }
+    }
+
+    function toggleStatsModal() {
+      const modal = document.getElementById('stats-modal');
+      const content = document.getElementById('stats-content');
+      if (modal.classList.contains('hidden')) {
+        // 計算統計數據
+        let totalMachines = 0;
+        let deptStats = {};
+        let categoryStats = {};
+
+        appState.sheets.forEach(sheet => {
+          const deptName = sheet.department || sheet.name;
+          const count = sheet.machines ? sheet.machines.length : 0;
+          deptStats[deptName] = count;
+          totalMachines += count;
+
+          if (sheet.machines) {
+            sheet.machines.forEach(m => {
+              const cat = m.category && m.category.trim() !== "" ? m.category.trim() : "未分類";
+              categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+            });
+          }
+        });
+
+        let html = `
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+              <div class="text-xs text-blue-600 font-semibold mb-1">全廠總機台數</div>
+              <div class="text-2xl font-black text-blue-900">${totalMachines} 台</div>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
+              <div class="text-xs text-indigo-600 font-semibold mb-1">工作表/課別總數</div>
+              <div class="text-2xl font-black text-indigo-900">${appState.sheets.length} 個</div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">各課機台數統計</h3>
+            <div class="space-y-2">
+        `;
+
+        for (let dept in deptStats) {
+          html += `
+            <div class="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs">
+              <span class="font-semibold text-slate-800">${dept}</span>
+              <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">${deptStats[dept]} 台</span>
+            </div>
+          `;
+        }
+
+        html += `
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">類別統計</h3>
+            <div class="grid grid-cols-2 gap-2">
+        `;
+
+        for (let cat in categoryStats) {
+          html += `
+            <div class="flex justify-between items-center bg-amber-50/60 px-3 py-2 rounded-lg border border-amber-200/60 text-xs">
+              <span class="font-medium text-slate-700">${cat}</span>
+              <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">${categoryStats[cat]} 台</span>
+            </div>
+          `;
+        }
+
+        html += `
+            </div>
+          </div>
+        `;
+
+        content.innerHTML = html;
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
       }
     }
 
@@ -700,13 +816,15 @@
               "區域": sheet.zone || "",
               "材質": sheet.material || "",
               "機台編號": m.name || "",
+              "廠牌型號": m.brand || "",
+              "類別": m.category || "",
               "圖片網址": m.imgUrl || "",
               "狀態顏色": m.statusColor || "bg-emerald-600",
               "X座標": m.x || 0,
               "Y座標": m.y || 0
             }));
           } else {
-            rows = [{ "課別": sheet.department || sheet.name, "區域": sheet.zone || "", "材質": sheet.material || "", "機台編號": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
+            rows = [{ "課別": sheet.department || sheet.name, "區域": sheet.zone || "", "材質": sheet.material || "", "機台編號": "", "廠牌型號": "", "類別": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
           }
 
           const ws = XLSX.utils.json_to_sheet(rows);
@@ -756,6 +874,8 @@
             currentSheet.machines = rows.map((row, mIdx) => ({
               id: `m_imp_${Date.now()}_${mIdx}`,
               name: row["機台編號"] || `機台_${mIdx + 1}`,
+              brand: row["廠牌型號"] || "",
+              category: row["類別"] || "",
               imgUrl: row["圖片網址"] || "",
               statusColor: row["狀態顏色"] || "bg-emerald-600",
               x: Number(row["X座標"]) || (30 + (mIdx % 6) * 160),
@@ -765,7 +885,7 @@
 
           renderApp();
           syncToFirebase();
-          alert(`「${currentSheet.name}」工作表資料已成功從 Excel 匯入更新！其他工作表保持不變。`);
+          alert(`「${currentSheet.name}」工作表資料已成功從 Excel 匯入更新！`);
         } catch (err) {
           console.error(err);
           alert("解析 Excel 失敗，請確認檔案格式是否正確。");
@@ -804,7 +924,9 @@
       const currentSheet = getCurrentSheet();
       currentSheet.machines.push({
         id: `m_${Date.now()}`, 
-        name: "新機台", 
+        name: "新機台",
+        brand: "",
+        category: "",
         imgUrl: "", 
         statusColor: "bg-emerald-600", 
         x: 30, 
@@ -820,6 +942,8 @@
       if (!m) return;
       document.getElementById('edit-machine-id').value = m.id;
       document.getElementById('edit-name').value = m.name;
+      document.getElementById('edit-brand').value = m.brand || "";
+      document.getElementById('edit-category').value = m.category || "";
       document.getElementById('edit-img-url').value = m.imgUrl || "";
       document.getElementById('edit-status-color').value = m.statusColor || "bg-emerald-600";
       document.getElementById('edit-modal').classList.remove('hidden');
@@ -832,6 +956,8 @@
       const m = getCurrentSheet().machines.find(item => item.id === id);
       if (m) {
         m.name = document.getElementById('edit-name').value;
+        m.brand = document.getElementById('edit-brand').value;
+        m.category = document.getElementById('edit-category').value;
         m.imgUrl = document.getElementById('edit-img-url').value;
         m.statusColor = document.getElementById('edit-status-color').value;
         syncToFirebase();
@@ -850,6 +976,8 @@
       const newMachine = {
         id: `m_${Date.now()}`,
         name: target.name + " (複製)",
+        brand: target.brand,
+        category: target.category,
         imgUrl: target.imgUrl,
         statusColor: target.statusColor,
         x: (target.x || 30) + 30,
