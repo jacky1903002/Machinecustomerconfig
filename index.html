@@ -19,7 +19,7 @@
       user-select: none;
       touch-action: none;
       transition: box-shadow 0.2s ease;
-      width: 140px;
+      width: 160px; /* 稍微加大格子寬度 */
       cursor: pointer;
     }
     .machine-card.dragging {
@@ -76,7 +76,7 @@
   </header>
 
   <!-- 工作表 (分區) 頁籤導覽列 -->
-  <div class="bg-white border-b border-slate-200 px-8 py-2 flex items-center justify-between shadow-sm overflow-x-auto">
+  <div class="bg-white border-b border-slate-200 px-8 py-2.5 flex items-center justify-between shadow-sm overflow-x-auto">
     <div id="sheets-tab-container" class="flex items-center space-x-2"></div>
     <div id="sheet-actions-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
@@ -88,7 +88,7 @@
   <!-- 次要操作工具列 -->
   <div class="bg-slate-100/70 border-b border-slate-200 px-8 py-2 flex items-center justify-between text-xs">
     <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>點擊機台卡片即可編輯或複製；拖曳時即時座標將顯示於機台右側並支援智慧磁吸對齊。</span>
+      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>雙擊頁籤可重新命名；點擊機台卡片可編輯課別、位置與材質等資訊；拖曳時支援智慧磁吸對齊。</span>
     </div>
     <div id="admin-toolbar" class="hidden flex items-center space-x-2">
       <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
@@ -115,7 +115,7 @@
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
-      <!-- 即時座標浮動提示（跟隨機台右側） -->
+      <!-- 即時座標浮動提示 -->
       <div id="coordinate-tooltip" style="display: none;" class="absolute bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none whitespace-nowrap">
         <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1"></i>X:<span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y:<span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
       </div>
@@ -149,12 +149,12 @@
     </div>
   </div>
 
-  <!-- 機台編輯 Modal -->
+  <!-- 機台編輯 Modal (新增課別、位置、材質) -->
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[480px] shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <i class="fa-solid fa-gear text-blue-600"></i> 編輯機台資訊
+          <i class="fa-solid fa-gear text-blue-600"></i> 編輯機台資訊 (課別 / 位置 / 材質)
         </h2>
         <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
@@ -163,6 +163,20 @@
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台名稱 / 編號</label>
           <input type="text" id="edit-name" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">課別</label>
+            <input type="text" id="edit-department" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例: 金屬一課">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">位置</label>
+            <input type="text" id="edit-location" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例: A區-01">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">材質</label>
+          <input type="text" id="edit-material" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="例: 不鏽鋼 / 鋁合金">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">機台專屬圖片網址 (URL)</label>
@@ -217,11 +231,11 @@
       sheets: [
         {
           id: "sheet_auto",
-          name: "自動化區",
+          name: "金屬一課",
           bgImage: "",
           machines: [
-            { id: "m_1", name: "CM77 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
-            { id: "m_2", name: "CM76 (銑床)", imgUrl: "", statusColor: "bg-amber-500", x: 190, y: 30 }
+            { id: "m_1", name: "CM77 (銑床)", department: "金屬一課", location: "A-01", material: "不鏽鋼", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 },
+            { id: "m_2", name: "CM76 (銑床)", department: "金屬一課", location: "A-02", material: "鋁合金", imgUrl: "", statusColor: "bg-amber-500", x: 210, y: 30 }
           ]
         },
         {
@@ -229,7 +243,7 @@
           name: "永進區",
           bgImage: "",
           machines: [
-            { id: "m_3", name: "AM05 (銑床)", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
+            { id: "m_3", name: "AM05 (銑床)", department: "永進課", location: "B-01", material: "碳鋼", imgUrl: "", statusColor: "bg-emerald-600", x: 30, y: 30 }
           ]
         }
       ]
@@ -282,7 +296,7 @@
         });
     }
 
-    const stateRef = db.ref('factory_layout_commercial_v10');
+    const stateRef = db.ref('factory_layout_commercial_v11');
 
     function syncToFirebase() {
       if (!isEditor) return;
@@ -372,7 +386,7 @@
 
       currentSheet.machines.forEach(m => {
         const card = document.createElement('div');
-        card.className = `machine-card bg-white border border-slate-200 rounded-lg p-1.5 shadow-sm flex flex-col space-y-1 transition-shadow hover:shadow-md`;
+        card.className = `machine-card bg-white border border-slate-200 rounded-xl p-2 shadow-sm flex flex-col space-y-1.5 transition-shadow hover:shadow-md`;
         card.style.left = `${m.x || 30}px`;
         card.style.top = `${m.y || 30}px`;
 
@@ -380,15 +394,20 @@
         if (m.statusColor === "bg-amber-500") statusText = "待機/維護";
         if (m.statusColor === "bg-rose-600") statusText = "異常/停機";
 
-        let imgHtml = `<div class="w-full h-7 bg-slate-50 rounded flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-[10px]"></i></div>`;
+        let imgHtml = `<div class="w-full h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-300 border border-dashed border-slate-200"><i class="fa-solid fa-image text-xs"></i></div>`;
         if (m.imgUrl && m.imgUrl.trim() !== "") {
-          imgHtml = `<div class="w-full h-7 bg-slate-50 rounded overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[8px]\'>失效</div>'"></div>`;
+          imgHtml = `<div class="w-full h-10 bg-slate-50 rounded-lg overflow-hidden border border-slate-200"><img src="${m.imgUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-rose-500 text-[9px]\'>失效</div>'"></div>`;
         }
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-900 text-[10px] tracking-tight truncate max-w-[85px]">${m.name}</span>
-            <span class="text-[8px] px-1 py-0.2 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
+            <span class="font-bold text-slate-900 text-[11px] tracking-tight truncate max-w-[100px]">${m.name}</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold text-white ${m.statusColor || 'bg-emerald-600'} truncate">${statusText}</span>
+          </div>
+          <div class="text-[10px] text-slate-500 space-y-0.5 font-medium">
+            <div>課別: <span class="text-slate-700">${m.department || '未設定'}</span></div>
+            <div>位置: <span class="text-slate-700">${m.location || '未設定'}</span></div>
+            <div>材質: <span class="text-slate-700">${m.material || '未設定'}</span></div>
           </div>
           ${imgHtml}
         `;
@@ -408,7 +427,8 @@
       appState.sheets.forEach(s => {
         const isActive = s.id === appState.activeSheetId;
         const tab = document.createElement('div');
-        tab.className = `flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}`;
+        // 仿造截圖中的圓角分區標籤風格
+        tab.className = `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`;
         
         tab.innerHTML = `
           <i class="fa-solid fa-table-cells text-[11px]"></i>
@@ -467,7 +487,6 @@
       }
     }
 
-    // 支援智慧磁吸對齊、拖曳互動與右側座標跟隨
     function initCardInteraction(card, machineData) {
       let startX = 0, startY = 0;
       let initialX = 0, initialY = 0;
@@ -517,23 +536,18 @@
             let newY = initialY + dy;
 
             const currentSheet = getCurrentSheet();
-            const snapThreshold = 6; // 磁吸距離容許值
-
+            const snapThreshold = 6;
             let snappedX = false;
             let snappedY = false;
 
-            // 智慧磁吸運算
             currentSheet.machines.forEach(other => {
               if (other.id === machineData.id) return;
-              
-              // X 軸對齊檢查
               if (Math.abs(newX - other.x) < snapThreshold) {
                 newX = other.x;
                 snappedX = true;
                 guideLineX.style.left = `${newX + card.offsetWidth / 2}px`;
                 guideLineX.style.display = 'block';
               }
-              // Y 軸對齊檢查
               if (Math.abs(newY - other.y) < snapThreshold) {
                 newY = other.y;
                 snappedY = true;
@@ -560,7 +574,6 @@
             tipX.textContent = Math.round(newX);
             tipY.textContent = Math.round(newY);
 
-            // 讓座標提示框跟隨在機台右側 (卡片 X + 卡片寬度 + 8px 間距)
             tooltip.style.left = `${newX + card.offsetWidth + 8}px`;
             tooltip.style.top = `${newY}px`;
           }
@@ -586,16 +599,14 @@
       };
     }
 
-function exportToExcel() {
+    function exportToExcel() {
       try {
-        // 檢查 SheetJS 函式庫是否已成功載入
         if (typeof XLSX === 'undefined') {
-          alert("Excel 匯出工具尚未載入完成，請檢查網路連線或 CDN。");
+          alert("Excel 匯出工具尚未載入完成。");
           return;
         }
 
         const workbook = XLSX.utils.book_new();
-        
         if (!appState.sheets || appState.sheets.length === 0) {
           alert("目前沒有任何工作表可供匯出！");
           return;
@@ -606,14 +617,16 @@ function exportToExcel() {
           if (sheet.machines && sheet.machines.length > 0) {
             rows = sheet.machines.map(m => ({
               "機台編號": m.name || "",
+              "課別": m.department || "",
+              "位置": m.location || "",
+              "材質": m.material || "",
               "圖片網址": m.imgUrl || "",
               "狀態顏色": m.statusColor || "bg-emerald-600",
               "X座標": m.x || 0,
               "Y座標": m.y || 0
             }));
           } else {
-            // 若該分區沒有機台，放一個空行避免 SheetJS 報錯
-            rows = [{ "機台編號": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
+            rows = [{ "機台編號": "", "課別": "", "位置": "", "材質": "", "圖片網址": "", "狀態顏色": "", "X座標": 0, "Y座標": 0 }];
           }
 
           const ws = XLSX.utils.json_to_sheet(rows);
@@ -623,7 +636,7 @@ function exportToExcel() {
         XLSX.writeFile(workbook, `多工作表廠區配置_${new Date().toISOString().slice(0,10)}.xlsx`);
       } catch (err) {
         console.error("匯出 Excel 發生錯誤：", err);
-        alert("匯出 Excel 失敗，請透過開發者工具 (F12) 查看詳細錯誤訊息。");
+        alert("匯出 Excel 失敗。");
       }
     }
 
@@ -645,10 +658,13 @@ function exportToExcel() {
               machines: rows.map((row, mIdx) => ({
                 id: `m_${sIdx}_${mIdx}_${Date.now()}`,
                 name: row["機台編號"] || `機台_${mIdx + 1}`,
+                department: row["課別"] || sheetName,
+                location: row["位置"] || "",
+                material: row["材質"] || "",
                 imgUrl: row["圖片網址"] || "",
                 statusColor: row["狀態顏色"] || "bg-emerald-600",
-                x: Number(row["X座標"]) || (30 + (mIdx % 6) * 160),
-                y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 6) * 100)
+                x: Number(row["X座標"]) || (30 + (mIdx % 5) * 180),
+                y: Number(row["Y座標"]) || (30 + Math.floor(mIdx / 5) * 150)
               }))
             };
           });
@@ -692,6 +708,9 @@ function exportToExcel() {
       currentSheet.machines.push({
         id: `m_${Date.now()}`, 
         name: "新機台", 
+        department: currentSheet.name,
+        location: "",
+        material: "",
         imgUrl: "", 
         statusColor: "bg-emerald-600", 
         x: 30, 
@@ -707,6 +726,9 @@ function exportToExcel() {
       if (!m) return;
       document.getElementById('edit-machine-id').value = m.id;
       document.getElementById('edit-name').value = m.name;
+      document.getElementById('edit-department').value = m.department || "";
+      document.getElementById('edit-location').value = m.location || "";
+      document.getElementById('edit-material').value = m.material || "";
       document.getElementById('edit-img-url').value = m.imgUrl || "";
       document.getElementById('edit-status-color').value = m.statusColor || "bg-emerald-600";
       document.getElementById('edit-modal').classList.remove('hidden');
@@ -719,6 +741,9 @@ function exportToExcel() {
       const m = getCurrentSheet().machines.find(item => item.id === id);
       if (m) {
         m.name = document.getElementById('edit-name').value;
+        m.department = document.getElementById('edit-department').value;
+        m.location = document.getElementById('edit-location').value;
+        m.material = document.getElementById('edit-material').value;
         m.imgUrl = document.getElementById('edit-img-url').value;
         m.statusColor = document.getElementById('edit-status-color').value;
         syncToFirebase();
@@ -737,6 +762,9 @@ function exportToExcel() {
       const newMachine = {
         id: `m_${Date.now()}`,
         name: target.name + " (複製)",
+        department: target.department,
+        location: target.location,
+        material: target.material,
         imgUrl: target.imgUrl,
         statusColor: target.statusColor,
         x: (target.x || 30) + 30,
