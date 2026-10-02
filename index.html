@@ -136,7 +136,8 @@
       </div>
     </div>
 
-    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[700px]">
+    <!-- 畫布高度已改為 3000px -->
+    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full h-[3000px]">
       <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
       <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
 
@@ -268,7 +269,7 @@
     };
 
     let isEditor = false;
-    let isLocalUpdating = false; // 防止 Firebase 回寫造成閃爍的旗標
+    let isLocalUpdating = false;
 
     auth.onAuthStateChanged(user => {
       const authBtn = document.getElementById('auth-toggle-btn');
@@ -340,7 +341,7 @@
     });
 
     stateRef.on('value', snapshot => {
-      if (isLocalUpdating) return; // 略過本地主動更新觸發的雲端回傳，防止畫面閃爍
+      if (isLocalUpdating) return;
       const val = snapshot.val();
       if (val) {
         appState = val;
@@ -717,11 +718,16 @@
       }
     }
 
-    // 修正後的 importFromExcel：嚴格使用 Excel 工作表名稱作為分頁標籤，並本地優先渲染避免閃爍
+    // 修正：匯入時記錄當前分頁名稱，匯入後若新資料中含有同名分頁則保持在該分頁，不強制跳回第一頁
     function importFromExcel(event) {
       if (!isEditor) return alert("請先登入管理員帳號！");
       const file = event.target.files[0];
       if (!file) return;
+
+      // 記住目前正在檢視的分頁名稱，以便匯入後嘗試對應回來
+      const currentActiveSheet = appState.sheets.find(s => s.id === appState.activeSheetId);
+      const activeSheetName = currentActiveSheet ? currentActiveSheet.name : null;
+
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
@@ -733,7 +739,7 @@
             let firstRow = rows[0] || {};
             return {
               id: `sheet_imp_${sIdx}_${Date.now()}`,
-              name: sheetName, // 嚴格採用 Excel 工作表本身的分頁名稱，避免同名衝突
+              name: sheetName,
               department: firstRow["課別"] || sheetName,
               zone: firstRow["區域"] || "預設區域",
               material: firstRow["材質"] || "通用材質",
@@ -751,9 +757,15 @@
 
           if (newSheets.length > 0) {
             appState.sheets = newSheets;
-            appState.activeSheetId = newSheets[0].id;
+
+            // 嘗試尋找匯入前正在檢視的分頁名稱，如果新匯入的內容也有這個分頁，就繼續停留在該分頁
+            let matchedSheet = newSheets.find(s => s.name === activeSheetName);
+            if (matchedSheet) {
+              appState.activeSheetId = matchedSheet.id;
+            } else {
+              appState.activeSheetId = newSheets[0].id;
+            }
             
-            // 本地優先渲染與同步
             renderApp();
             syncToFirebase();
             alert("Excel 資料成功匯入！");
