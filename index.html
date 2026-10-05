@@ -107,7 +107,7 @@
     </div>
   </div>
 
-  <!-- 主畫布區域（全螢幕最大化調整） -->
+  <!-- 主畫布區域 -->
   <main class="flex-1 p-4 w-full flex flex-col min-h-0 overflow-hidden">
     <!-- 頂部資訊卡 -->
     <div class="bg-white border border-slate-200 rounded-xl p-3 mb-3 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -166,10 +166,12 @@
       </div>
     </div>
 
-    <!-- 畫布區域：自動高度填滿剩餘可視範圍 -->
-    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-hidden w-full flex-1">
-      <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
-      <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
+    <!-- 畫布容器：啟用內部垂直滾動，並將內容區設為 200%（兩倍高） -->
+    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-y-auto w-full flex-1">
+      <div id="factory-canvas-content" class="relative w-full h-[200%] min-h-[1600px]">
+        <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
+        <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
+      </div>
 
       <!-- 即時座標浮動提示 -->
       <div id="coordinate-tooltip" style="display: none;" class="absolute bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none whitespace-nowrap">
@@ -656,7 +658,6 @@
       }
     }
 
-    // 升級版：依材質群組展開的統計分析
     function toggleStatsModal() {
       const modal = document.getElementById('stats-modal');
       const content = document.getElementById('stats-content');
@@ -770,19 +771,21 @@
       const tipX = document.getElementById('tooltip-x');
       const tipY = document.getElementById('tooltip-y');
 
+      const canvasContent = document.getElementById('factory-canvas-content');
+
       let guideLineX = document.getElementById('snap-guideline-x');
       let guideLineY = document.getElementById('snap-guideline-y');
       if (!guideLineX) {
         guideLineX = document.createElement('div');
         guideLineX.id = 'snap-guideline-x';
         guideLineX.style.cssText = 'position:absolute; top:0; bottom:0; width:1px; background:#3b82f6; z-index:999; display:none; pointer-events:none;';
-        document.getElementById('factory-canvas-container').appendChild(guideLineX);
+        canvasContent.appendChild(guideLineX);
       }
       if (!guideLineY) {
         guideLineY = document.createElement('div');
         guideLineY.id = 'snap-guideline-y';
         guideLineY.style.cssText = 'position:absolute; left:0; right:0; height:1px; background:#3b82f6; z-index:999; display:none; pointer-events:none;';
-        document.getElementById('factory-canvas-container').appendChild(guideLineY);
+        canvasContent.appendChild(guideLineY);
       }
 
       card.onpointerdown = (e) => {
@@ -833,9 +836,8 @@
             if (!snappedX) guideLineX.style.display = 'none';
             if (!snappedY) guideLineY.style.display = 'none';
 
-            const container = document.getElementById('factory-canvas-container');
-            const maxX = Math.max(0, container.clientWidth - card.offsetWidth);
-            const maxY = Math.max(0, container.clientHeight - card.offsetHeight);
+            const maxX = Math.max(0, canvasContent.clientWidth - card.offsetWidth);
+            const maxY = Math.max(0, canvasContent.clientHeight - card.offsetHeight);
 
             newX = Math.max(10, Math.min(newX, maxX));
             newY = Math.max(10, Math.min(newY, maxY));
@@ -994,7 +996,7 @@
     }
 
     function exportLayoutPNG() {
-      const container = document.getElementById('factory-canvas-container');
+      const container = document.getElementById('factory-canvas-content');
       html2canvas(container, { useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
         const link = document.createElement('a');
         link.download = `廠區配置圖_${getCurrentSheet().name}_${new Date().toISOString().slice(0,10)}.png`;
