@@ -32,153 +32,182 @@
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden">
 
-  <!-- 頂部商業導覽列 -->
-  <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center z-50 shadow-sm shrink-0">
-    <div class="flex items-center space-x-3">
-      <div id="brand-logo-container" onclick="changeLogoUrl()" title="點擊可設定 Logo 圖片連結" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20 overflow-hidden cursor-pointer hover:opacity-90 transition">
-        <div id="brand-logo-content" class="w-full h-full flex items-center justify-center">
-          <i class="fa-solid fa-industry"></i>
+  <!-- 全螢幕入口登入門戶 (預設顯示，未登入前擋住主要內容) -->
+  <div id="login-portal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-full max-w-md shadow-2xl text-center">
+      <div class="w-16 h-16 bg-blue-600 rounded-2xl text-white text-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+        <i class="fa-solid fa-industry"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-900 mb-1">智慧廠區配置系統</h2>
+      <p class="text-xs text-slate-500 mb-6">請先登入 Firebase 帳號密碼以存取系統</p>
+      
+      <div class="space-y-4 text-left">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">電子郵件 (Email)</label>
+          <input type="email" id="portal-email" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-blue-500 transition" placeholder="admin@example.com">
         </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">密碼 (Password)</label>
+          <input type="password" id="portal-password" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-blue-500 transition" placeholder="••••••••">
+        </div>
+        <div id="portal-login-error" class="text-rose-600 text-xs font-medium hidden"></div>
+        <button onclick="handlePortalLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm shadow-md shadow-blue-500/20 transition mt-2">
+          登入系統
+        </button>
       </div>
-      <div>
-        <h1 class="text-lg font-bold text-slate-900 tracking-tight">智慧廠區多工作表配置系統</h1>
-        <p class="text-xs text-slate-400">Multi-Sheet Factory Zone Layout Management</p>
-      </div>
-    </div>
-    <div class="flex items-center space-x-3">
-      <div class="flex items-center space-x-2 text-xs">
-        <span id="firebase-status" class="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 font-medium border border-amber-200 flex items-center gap-1.5">
-          <i class="fa-solid fa-circle-notch fa-spin"></i> <span>連線初始化中...</span>
-        </span>
-        <span id="last-update-time" class="text-slate-400 hidden md:inline">上次更新：尚無</span>
-      </div>
-
-      <!-- 中英文切換按鈕 -->
-      <button onclick="toggleLanguage()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
-        <i class="fa-solid fa-language"></i> <span id="lang-btn-text">English</span>
-      </button>
-
-      <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-        <i class="fa-solid fa-file-excel"></i> <span class="i-text" data-zh="匯出 Excel" data-en="Export Excel">匯出 Excel</span>
-      </button>
-      <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
-        <i class="fa-solid fa-file-import"></i> <span class="i-text" data-zh="匯入當前工作表 Excel" data-en="Import to Current Sheet">匯入當前工作表 Excel</span>
-        <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
-      </label>
-      <button onclick="exportLayoutPNG()" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-        <i class="fa-solid fa-camera"></i> <span class="i-text" data-zh="截圖匯出" data-en="Export PNG">截圖匯出</span>
-      </button>
-
-      <label class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
-        <i class="fa-solid fa-image"></i> <span class="i-text" data-zh="更換當前區底圖" data-en="Change Bg">更換當前區底圖</span>
-        <input type="file" id="bg-image-input" accept="image/*" class="hidden" onchange="handleBgImageUpload(event)">
-      </label>
-
-      <!-- 統計分析按鈕 -->
-      <button onclick="toggleStatsModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-        <i class="fa-solid fa-chart-pie"></i> <span>機台分析統計</span>
-      </button>
-
-      <button id="auth-toggle-btn" onclick="toggleAuthModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">
-        管理員登入
-      </button>
-    </div>
-  </header>
-
-  <!-- 工作表 (分區) 頁籤導覽列 -->
-  <div class="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between shadow-sm overflow-x-auto shrink-0">
-    <div id="sheets-tab-container" class="flex items-center space-x-2"></div>
-    <div id="sheet-actions-toolbar" class="hidden flex items-center space-x-2">
-      <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
-        <i class="fa-solid fa-plus"></i> 新增工作表 (分區)
-      </button>
     </div>
   </div>
 
-  <!-- 次要操作工具列 -->
-  <div class="bg-slate-100/70 border-b border-slate-200 px-6 py-1.5 flex items-center justify-between text-xs shrink-0">
-    <div class="text-slate-500 font-medium">
-      <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」及「日班/中班/夜班」文字即可直接更改名稱與數字；雙擊頁籤可重新命名分區。</span>
+  <!-- 主要系統內容容器 (登入前隱藏) -->
+  <div id="main-app-container" class="hidden h-screen flex flex-col overflow-hidden w-full">
+    <!-- 頂部商業導覽列 -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center z-50 shadow-sm shrink-0">
+      <div class="flex items-center space-x-3">
+        <div id="brand-logo-container" onclick="changeLogoUrl()" title="點擊可設定 Logo 圖片連結" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20 overflow-hidden cursor-pointer hover:opacity-90 transition">
+          <div id="brand-logo-content" class="w-full h-full flex items-center justify-center">
+            <i class="fa-solid fa-industry"></i>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 tracking-tight">智慧廠區多工作表配置系統</h1>
+          <p class="text-xs text-slate-400">Multi-Sheet Factory Zone Layout Management</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 text-xs">
+          <span id="firebase-status" class="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 font-medium border border-amber-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-notch fa-spin"></i> <span>連線初始化中...</span>
+          </span>
+          <span id="last-update-time" class="text-slate-400 hidden md:inline">上次更新：尚無</span>
+        </div>
+
+        <!-- 中英文切換按鈕 -->
+        <button onclick="toggleLanguage()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-language"></i> <span id="lang-btn-text">English</span>
+        </button>
+
+        <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-file-excel"></i> <span class="i-text" data-zh="匯出 Excel" data-en="Export Excel">匯出 Excel</span>
+        </button>
+        <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
+          <i class="fa-solid fa-file-import"></i> <span class="i-text" data-zh="匯入當前工作表 Excel" data-en="Import to Current Sheet">匯入當前工作表 Excel</span>
+          <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+        </label>
+        <button onclick="exportLayoutPNG()" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-camera"></i> <span class="i-text" data-zh="截圖匯出" data-en="Export PNG">截圖匯出</span>
+        </button>
+
+        <label class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5">
+          <i class="fa-solid fa-image"></i> <span class="i-text" data-zh="更換當前區底圖" data-en="Change Bg">更換當前區底圖</span>
+          <input type="file" id="bg-image-input" accept="image/*" class="hidden" onchange="handleBgImageUpload(event)">
+        </label>
+
+        <!-- 統計分析按鈕 -->
+        <button onclick="toggleStatsModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-pie"></i> <span>機台分析統計</span>
+        </button>
+
+        <button id="auth-toggle-btn" onclick="toggleAuthModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition">
+          登出系統
+        </button>
+      </div>
+    </header>
+
+    <!-- 工作表 (分區) 頁籤導覽列 -->
+    <div class="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between shadow-sm overflow-x-auto shrink-0">
+      <div id="sheets-tab-container" class="flex items-center space-x-2"></div>
+      <div id="sheet-actions-toolbar" class="flex items-center space-x-2">
+        <button onclick="addNewSheet()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> 新增工作表 (分區)
+        </button>
+      </div>
     </div>
-    <div id="admin-toolbar" class="hidden flex items-center space-x-2">
-      <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
-        <i class="fa-solid fa-plus"></i> 在當前工作表新增機台
-      </button>
+
+    <!-- 次要操作工具列 -->
+    <div class="bg-slate-100/70 border-b border-slate-200 px-6 py-1.5 flex items-center justify-between text-xs shrink-0">
+      <div class="text-slate-500 font-medium">
+        <span><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>提示：雙擊頂部的「課別」、「區域」、「材質」及「日班/中班/夜班」文字即可直接更改名稱與數字；雙擊頁籤可重新命名分區。</span>
+      </div>
+      <div id="admin-toolbar" class="flex items-center space-x-2">
+        <button onclick="addNewMachine()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition flex items-center gap-1">
+          <i class="fa-solid fa-plus"></i> 在當前工作表新增機台
+        </button>
+      </div>
     </div>
+
+    <!-- 主畫布區域 -->
+    <main class="flex-1 p-4 w-full flex flex-col min-h-0 overflow-hidden">
+      <!-- 頂部資訊卡 -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 mb-3 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center space-x-3 flex-wrap">
+          <!-- 課別欄位 -->
+          <div class="flex items-center space-x-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-bold text-blue-800 flex items-center gap-1">
+              <i class="fa-solid fa-building-user"></i> <span class="lbl-dept">課別</span>:
+            </span>
+            <span id="header-department" ondblclick="editFieldDirectly('department')" title="雙擊可直接更改課別" class="text-xs font-extrabold text-blue-900 cursor-pointer hover:bg-blue-100/70 px-1.5 py-0.5 rounded transition">載入中...</span>
+          </div>
+          
+          <!-- 區域欄位 -->
+          <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+              <i class="fa-solid fa-map-location-dot"></i> <span class="lbl-zone">區域</span>:
+            </span>
+            <span id="header-zone" ondblclick="editFieldDirectly('zone')" title="雙擊可直接更改區域" class="text-xs font-bold text-slate-800 cursor-pointer hover:bg-slate-200/70 px-1.5 py-0.5 rounded transition">載入中...</span>
+          </div>
+
+          <!-- 材質欄位 -->
+          <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+              <i class="fa-solid fa-layer-group"></i> <span class="lbl-mat">材質</span>:
+            </span>
+            <span id="header-material" ondblclick="editFieldDirectly('material')" title="雙擊可直接更改材質" class="text-xs font-bold text-slate-800 cursor-pointer hover:bg-slate-200/70 px-1.5 py-0.5 rounded transition">載入中...</span>
+          </div>
+
+          <!-- 日班欄位 -->
+          <div class="flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-semibold text-amber-700 flex items-center gap-1">
+              <i class="fa-solid fa-sun text-amber-500"></i> 日班:
+            </span>
+            <span id="header-shift-day" ondblclick="editFieldDirectly('shiftDay')" title="雙擊可直接填入日班數字" class="text-xs font-bold text-amber-900 cursor-pointer hover:bg-amber-100/70 px-1.5 py-0.5 rounded transition">0</span>
+          </div>
+
+          <!-- 中班欄位 -->
+          <div class="flex items-center space-x-2 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-semibold text-orange-700 flex items-center gap-1">
+              <i class="fa-solid fa-cloud-sun text-orange-500"></i> 中班:
+            </span>
+            <span id="header-shift-mid" ondblclick="editFieldDirectly('shiftMid')" title="雙擊可直接填入中班數字" class="text-xs font-bold text-orange-900 cursor-pointer hover:bg-orange-100/70 px-1.5 py-0.5 rounded transition">0</span>
+          </div>
+
+          <!-- 夜班欄位 -->
+          <div class="flex items-center space-x-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-semibold text-indigo-700 flex items-center gap-1">
+              <i class="fa-solid fa-moon text-indigo-500"></i> 夜班:
+            </span>
+            <span id="header-shift-night" ondblclick="editFieldDirectly('shiftNight')" title="雙擊可直接填入夜班數字" class="text-xs font-bold text-indigo-900 cursor-pointer hover:bg-indigo-100/70 px-1.5 py-0.5 rounded transition">0</span>
+          </div>
+        </div>
+
+        <div class="text-xs text-slate-400">
+          <span><i class="fa-solid fa-magnet text-indigo-500 mr-1"></i>具備智慧磁吸對齊功能</span>
+        </div>
+      </div>
+
+      <!-- 畫布容器 -->
+      <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-y-auto w-full flex-1">
+        <div id="factory-canvas-content" class="relative w-full h-[200%] min-h-[1600px]">
+          <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
+          <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
+        </div>
+
+        <!-- 即時座標浮動提示 -->
+        <div id="coordinate-tooltip" style="display: none;" class="absolute bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none whitespace-nowrap">
+          <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1"></i>X:<span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y:<span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
+        </div>
+      </div>
+    </main>
   </div>
-
-  <!-- 主畫布區域 -->
-  <main class="flex-1 p-4 w-full flex flex-col min-h-0 overflow-hidden">
-    <!-- 頂部資訊卡 -->
-    <div class="bg-white border border-slate-200 rounded-xl p-3 mb-3 shadow-sm flex flex-wrap items-center justify-between gap-3 shrink-0">
-      <div class="flex items-center space-x-3 flex-wrap">
-        <!-- 課別欄位 -->
-        <div class="flex items-center space-x-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">
-          <span class="text-xs font-bold text-blue-800 flex items-center gap-1">
-            <i class="fa-solid fa-building-user"></i> <span class="lbl-dept">課別</span>:
-          </span>
-          <span id="header-department" ondblclick="editFieldDirectly('department')" title="雙擊可直接更改課別" class="text-xs font-extrabold text-blue-900 cursor-pointer hover:bg-blue-100/70 px-1.5 py-0.5 rounded transition">載入中...</span>
-        </div>
-        
-        <!-- 區域欄位 -->
-        <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-          <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <i class="fa-solid fa-map-location-dot"></i> <span class="lbl-zone">區域</span>:
-          </span>
-          <span id="header-zone" ondblclick="editFieldDirectly('zone')" title="雙擊可直接更改區域" class="text-xs font-bold text-slate-800 cursor-pointer hover:bg-slate-200/70 px-1.5 py-0.5 rounded transition">載入中...</span>
-        </div>
-
-        <!-- 材質欄位 -->
-        <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-          <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <i class="fa-solid fa-layer-group"></i> <span class="lbl-mat">材質</span>:
-          </span>
-          <span id="header-material" ondblclick="editFieldDirectly('material')" title="雙擊可直接更改材質" class="text-xs font-bold text-slate-800 cursor-pointer hover:bg-slate-200/70 px-1.5 py-0.5 rounded transition">載入中...</span>
-        </div>
-
-        <!-- 日班欄位 -->
-        <div class="flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-          <span class="text-xs font-semibold text-amber-700 flex items-center gap-1">
-            <i class="fa-solid fa-sun text-amber-500"></i> 日班:
-          </span>
-          <span id="header-shift-day" ondblclick="editFieldDirectly('shiftDay')" title="雙擊可直接填入日班數字" class="text-xs font-bold text-amber-900 cursor-pointer hover:bg-amber-100/70 px-1.5 py-0.5 rounded transition">0</span>
-        </div>
-
-        <!-- 中班欄位 -->
-        <div class="flex items-center space-x-2 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg">
-          <span class="text-xs font-semibold text-orange-700 flex items-center gap-1">
-            <i class="fa-solid fa-cloud-sun text-orange-500"></i> 中班:
-          </span>
-          <span id="header-shift-mid" ondblclick="editFieldDirectly('shiftMid')" title="雙擊可直接填入中班數字" class="text-xs font-bold text-orange-900 cursor-pointer hover:bg-orange-100/70 px-1.5 py-0.5 rounded transition">0</span>
-        </div>
-
-        <!-- 夜班欄位 -->
-        <div class="flex items-center space-x-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg">
-          <span class="text-xs font-semibold text-indigo-700 flex items-center gap-1">
-            <i class="fa-solid fa-moon text-indigo-500"></i> 夜班:
-          </span>
-          <span id="header-shift-night" ondblclick="editFieldDirectly('shiftNight')" title="雙擊可直接填入夜班數字" class="text-xs font-bold text-indigo-900 cursor-pointer hover:bg-indigo-100/70 px-1.5 py-0.5 rounded transition">0</span>
-        </div>
-      </div>
-
-      <div class="text-xs text-slate-400">
-        <span><i class="fa-solid fa-magnet text-indigo-500 mr-1"></i>具備智慧磁吸對齊功能</span>
-      </div>
-    </div>
-
-    <!-- 畫布容器：啟用內部垂直滾動，並將內容區設為 200%（兩倍高） -->
-    <div id="factory-canvas-container" class="relative rounded-2xl border border-slate-300 bg-white shadow-inner overflow-y-auto w-full flex-1">
-      <div id="factory-canvas-content" class="relative w-full h-[200%] min-h-[1600px]">
-        <div id="factory-bg-layer" class="absolute inset-0 bg-cover bg-center opacity-85 pointer-events-none"></div>
-        <div id="machine-canvas-area" class="absolute inset-0 z-10 w-full h-full"></div>
-      </div>
-
-      <!-- 即時座標浮動提示 -->
-      <div id="coordinate-tooltip" style="display: none;" class="absolute bg-slate-900 text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl z-[9999] font-mono tracking-wide border border-slate-700 pointer-events-none whitespace-nowrap">
-        <i class="fa-solid fa-location-crosshairs text-blue-400 mr-1"></i>X:<span id="tooltip-x" class="text-emerald-400 font-bold">0</span>, Y:<span id="tooltip-y" class="text-emerald-400 font-bold">0</span>
-      </div>
-    </div>
-  </main>
 
   <!-- 統計分析 Modal -->
   <div id="stats-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
@@ -198,34 +227,7 @@
     </div>
   </div>
 
-  <!-- 登入 Modal -->
-  <div id="login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-    <div class="bg-white border border-slate-200 p-8 rounded-2xl w-96 shadow-2xl">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <i class="fa-solid fa-lock text-blue-600"></i> 管理員登入
-        </h2>
-        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">電子郵件 (Email)</label>
-          <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="admin@example.com">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">密碼 (Password)</label>
-          <input type="password" id="login-password" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-500" placeholder="••••••••">
-        </div>
-        <div id="login-error" class="text-rose-600 text-xs font-medium hidden"></div>
-        <div class="flex justify-end space-x-2 pt-2">
-          <button onclick="closeLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold">取消</button>
-          <button onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm">確認登入</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 機台編輯 Modal (含 廠牌型號、類別) -->
+  <!-- 機台編輯 Modal -->
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="bg-white border border-slate-200 p-8 rounded-2xl w-[500px] shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center mb-6">
@@ -337,46 +339,56 @@
     let isEditor = false;
     let isLocalUpdating = false;
 
+    // 監聽 Firebase 登入狀態：控制入口 Portal 及主畫面的顯示/隱藏
     auth.onAuthStateChanged(user => {
-      const authBtn = document.getElementById('auth-toggle-btn');
-      const adminToolbar = document.getElementById('admin-toolbar');
-      const sheetActionsToolbar = document.getElementById('sheet-actions-toolbar');
+      const loginPortal = document.getElementById('login-portal');
+      const mainContainer = document.getElementById('main-app-container');
 
       if (user) {
         isEditor = true;
-        authBtn.textContent = "登出系統";
-        authBtn.className = "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-xs font-semibold transition";
-        adminToolbar.classList.remove('hidden');
-        sheetActionsToolbar.classList.remove('hidden');
+        loginPortal.classList.add('hidden');
+        mainContainer.classList.remove('hidden');
+        renderApp();
       } else {
         isEditor = false;
-        authBtn.textContent = "管理員登入";
-        authBtn.className = "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition";
-        adminToolbar.classList.add('hidden');
-        sheetActionsToolbar.classList.add('hidden');
+        loginPortal.classList.remove('hidden');
+        mainContainer.classList.add('hidden');
       }
-      renderApp();
+    });
+
+    // 入口門戶登入邏輯
+    function handlePortalLogin() {
+      const email = document.getElementById('portal-email').value.trim();
+      const pass = document.getElementById('portal-password').value;
+      const errEl = document.getElementById('portal-login-error');
+
+      if (!email || !pass) {
+        errEl.textContent = "請輸入 Email 與密碼！";
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+          errEl.classList.add('hidden');
+          document.getElementById('portal-email').value = '';
+          document.getElementById('portal-password').value = '';
+        })
+        .catch(err => {
+          errEl.textContent = "登入失敗：帳號或密碼錯誤！(" + err.message + ")";
+          errEl.classList.remove('hidden');
+        });
+    }
+
+    // 入口處按 Enter 鍵快速登入
+    document.getElementById('portal-password').addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') handlePortalLogin();
     });
 
     function toggleAuthModal() {
-      if (isEditor) {
-        auth.signOut().then(() => alert("已成功登出"));
-      } else {
-        document.getElementById('login-modal').classList.remove('hidden');
+      if (confirm("確定要登出系統嗎？")) {
+        auth.signOut();
       }
-    }
-    function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
-    
-    function handleLogin() {
-      const email = document.getElementById('login-email').value;
-      const pass = document.getElementById('login-password').value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(() => { closeLoginModal(); alert("登入成功！"); })
-        .catch(err => {
-          const errEl = document.getElementById('login-error');
-          errEl.textContent = "登入失敗：" + err.message;
-          errEl.classList.remove('hidden');
-        });
     }
 
     const stateRef = db.ref('factory_layout_commercial_v15');
@@ -535,10 +547,7 @@
     }
 
     function editFieldDirectly(fieldType) {
-      if (!isEditor) {
-        alert("請先點擊右上角「管理員登入」後才能修改！");
-        return;
-      }
+      if (!isEditor) return;
       const sheet = getCurrentSheet();
       if (!sheet) return;
 
@@ -922,7 +931,7 @@
     }
 
     function importFromExcel(event) {
-      if (!isEditor) return alert("請先登入管理員帳號！");
+      if (!isEditor) return;
       const file = event.target.files[0];
       if (!file) return;
 
@@ -982,7 +991,7 @@
     }
 
     function handleBgImageUpload(event) {
-      if (!isEditor) return alert("請先登入！");
+      if (!isEditor) return;
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
